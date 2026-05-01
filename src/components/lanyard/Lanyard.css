@@ -1,0 +1,27 @@
+.lanyard-wrapper {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform: scale(1);
+  transform-origin: center;
+  contain: layout paint;
+}
+
+.lanyard-fallback {
+  display: grid;
+  place-items: center;
+  width: min(420px, 80vw);
+  min-height: 260px;
+  padding: 24px;
+  color: rgba(248, 245, 247, 0.72);
+  border: 1px solid rgba(84, 244, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(8, 9, 11, 0.72);
+  font-family: var(--mono, monospace);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}

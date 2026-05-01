@@ -1,0 +1,45 @@
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+
+# Local dev / test artifacts
+*.log
+*.out.log
+*.err.log
+.playwright-cli/
+.playwright-mcp/
+output/
+playwright-*.json
+
+# Python helper caches / local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local machine admin probes with private credentials.
+tools/check_*.py
+
+# Local source dumps, reference captures, and one-off screenshots.
+# The app uses curated assets under public/assets instead.
+/*.jpg
+/*.jpeg
+/*.png
+/*.webp
+/*.gif
+/109-hoisted.js
+/109-style.css
+/notion-snapshot.md
+
+# Unused cutout/reference variants kept locally while iterating.
+public/assets/*-bria.png
+public/assets/*-checker.png
+public/assets/*-birefnet*.png
+public/assets/character-soft.webp
+public/assets/character-tech-cutout.png
+public/assets/material-quiet-reader.jpg
+public/assets/trail-frame-*.jpg
+public/assets/user-*.jpg
