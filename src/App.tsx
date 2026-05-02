@@ -81,60 +81,60 @@ const assets = {
 };
 
 const stacks = [
-  { name: 'ClickSpark', text: '整页点击会炸出一点短促火花，像信号被手指点亮。', bit: 'React Bits / feedback' },
-  { name: 'Magnet', text: '链接和图册靠近鼠标会轻轻跟手，互动更像有磁场。', bit: 'React Bits / pointer' },
-  { name: 'SpotlightCard', text: '技术矩阵用聚光扫过，信息密但不会变成普通说明卡。', bit: 'React Bits / surface' },
-  { name: 'StarBorder', text: '首屏代码片和留言框外圈有星光流动，收住亮点但不抢主视觉。', bit: 'React Bits / accent' },
-  { name: 'WebGL', text: '首屏继续保留硬核轨道，做这个站的第一眼记忆点。', bit: 'Three.js / core' },
-  { name: 'GSAP', text: '滚动还是靠时间轴推进，React Bits 只补手感，不抢主叙事。', bit: 'Motion / glue' },
+  { name: '草莓星屑', text: '她最喜欢踩月光走路，因为踩着踩着就会冒出一小颗一小颗星星。', bit: '今晚 03:14' },
+  { name: '牛奶引力', text: '靠近她的时候要把脚步放轻哦，她的耳朵尖尖的，会偷偷竖起来。', bit: '阳台风口' },
+  { name: '月光柔焦', text: '今晚的月亮把她的脸照得太亮，她只好假装在数远处的云。', bit: '满月 -1°' },
+  { name: '亮晶晶外框', text: '她偷偷给最重要的几件事都套上了一圈星河，怕它们半夜走丢。', bit: '抽屉第三格' },
+  { name: '云端小宇宙', text: '她的小宇宙里只住着她自己，还有一只会发光的猫猫。', bit: '宇宙北角' },
+  { name: '时间软糖', text: '时间在这里走得慢一点，是因为糖罐里的糖实在太香了。', bit: '糖罐底层' },
 ];
 
 const notes = [
-  ['phase 01', '首屏保留 BTORN 的轨道启动感，像系统正在加载一个二次元小宇宙。'],
-  ['phase 02', '下滑进入抠图切片，角色从画框里冲出来，别再只是普通图片卡片。'],
-  ['phase 03', '作品区改成大图预览和轨道列表，鼠标经过会有光线和位移反馈。'],
-  ['phase 04', '图册区改成横向胶片，把素材变成浏览节奏，而不是平铺图库。'],
+  ['梦境 01', '今天梦见自己变成了一颗会发光的糖，被偷偷藏在最喜欢的人口袋里。'],
+  ['梦境 02', '梦里下了一场糖果雨，她伸出舌头接到一颗草莓味的小星星。'],
+  ['梦境 03', '和一只猫坐在云上看日落，云软软的，日落甜甜的，她什么都没说。'],
+  ['梦境 04', '醒来时枕头上躺着一颗发亮的小石头，她悄悄把它收进糖罐里了。'],
 ];
 
 const gallery = [
-  { src: assets.gallerySky, title: '粉色箭头', tag: '第一眼' },
-  { src: assets.galleryFreshReader, title: '书页边缘', tag: '新素材' },
-  { src: assets.galleryFreshBlue, title: '蓝调小窗', tag: '新素材' },
-  { src: assets.galleryFreshPoster, title: '海报切片', tag: '新素材' },
-  { src: assets.galleryStudy, title: '学习角落', tag: '认真一下' },
-  { src: assets.galleryExtra, title: '备用宝物', tag: '再藏一点' },
+  { src: assets.gallerySky, title: '粉粉的箭头', tag: '一见钟情' },
+  { src: assets.galleryFreshReader, title: '翻到一半的书', tag: '新拣到的' },
+  { src: assets.galleryFreshBlue, title: '蓝色小窗', tag: '新拣到的' },
+  { src: assets.galleryFreshPoster, title: '撕下的海报', tag: '新拣到的' },
+  { src: assets.galleryStudy, title: '学习小角落', tag: '偶尔用功' },
+  { src: assets.galleryExtra, title: '藏起来的宝物', tag: '偷偷藏好' },
 ];
 
 const bitMetrics = [
-  { label: '组件接入', value: 28, suffix: '+' },
-  { label: '文本效果', value: 12, suffix: '种' },
-  { label: '互动密度', value: 96, suffix: '%' },
+  { label: '今天偷藏的糖', value: 28, suffix: '+' },
+  { label: '想你想到的次数', value: 12, suffix: '次' },
+  { label: '心跳浓度', value: 96, suffix: '%' },
 ];
 
 const streamItems = [
-  'ShinyText',
-  'ScrollFloat',
-  'InfiniteScroll',
-  'GlareHover',
-  'TextPressure',
-  'TextType',
-  'DecryptedText',
-  'TrueFocus',
-  'ScrollReveal',
-  'ScrollVelocity',
-  'CurvedLoop',
-  'ScrambledText',
-  'CircularText',
-  'Aurora',
-  'Silk',
-  'Carousel',
-  'FlowingMenu',
-  'Magnet',
-  'SpotlightCard',
-  'StarBorder',
-  'ClickSpark',
-  'PixelTransition',
-  'TiltedCard',
+  '闪闪糖',
+  '漂浮云',
+  '无限糖',
+  '亮晶晶',
+  '触触字',
+  '打字机',
+  '解谜糖',
+  '心跳焦点',
+  '揭开纸',
+  '风速糖',
+  '弯弯糖',
+  '跳跳字',
+  '圆圆字',
+  '极光糖',
+  '丝绸云',
+  '旋转木马',
+  '流光菜单',
+  '引力糖',
+  '聚光糖',
+  '星框糖',
+  '点点星',
+  '像素糖',
+  '倾斜糖',
 ];
 
 type MotionTokenProps = {
@@ -172,81 +172,81 @@ const contactLinks = [
 const workCategories = [
   {
     id: '01',
-    file: 'category_01',
-    label: 'ILLUSTRATION',
-    title: '强色线稿',
-    desc: '把图放到整屏里，边缘做 RGB 分离和扫描线，第一眼就要像信号突然接上。',
-    cta: '插画一覧',
+    file: 'dream_01',
+    label: 'CANDY HEART',
+    title: '糖心绘卷',
+    desc: '粉粉的箭头是她最喜欢的方向，每次画到这里她都会偷偷脸红，假装是因为今天阳光太亮。',
+    cta: '翻翻心动册',
     src: assets.galleryPinkArrow,
   },
   {
     id: '02',
-    file: 'category_02',
-    label: 'MV ILLUSTRATION',
-    title: '动态分镜',
-    desc: '不靠普通卡片排版，靠滚动、遮罩和画面抖动，让静态图也有 MV 截帧感。',
-    cta: 'MV一覧',
+    file: 'dream_02',
+    label: 'DREAMY FRAMES',
+    title: '一格一格的梦',
+    desc: '梦里有一格一格的小窗，每打开一扇都会飘出不一样的甜味。她说最想推开的那扇还没找到。',
+    cta: '看看梦境',
     src: assets.characterTech,
   },
   {
     id: '03',
-    file: 'category_03',
-    label: 'EVENT',
-    title: '活动情报',
-    desc: '文字层压低，画面层放大，像一张正在播放的展会告知屏，信息藏在窗口里。',
-    cta: '日程を見る',
+    file: 'dream_03',
+    label: 'TINY EVENT',
+    title: '小心心活动',
+    desc: '今天的小活动是去给路边的猫猫挠下巴，记得带一点小鱼干，还要带上心情最好的那一份。',
+    cta: '看看日程',
     src: assets.galleryTeam,
   },
   {
     id: '04',
-    file: 'category_04',
-    label: 'GOODS',
-    title: '周边陈列',
-    desc: '把小物、贴纸和角色影子叠成一段低保真播放画面，鼠标点一下就暂停。',
-    cta: 'グッズ一覧',
+    file: 'dream_04',
+    label: 'TREASURE BOX',
+    title: '我的小宝物',
+    desc: '贴纸盒里住着星星、彩虹、还有一只迷路的小兔子。她每天都会数一遍，怕谁悄悄跑掉。',
+    cta: '看看宝物',
     src: assets.galleryNight,
   },
 ];
 
 const sceneCards = [
-  { src: assets.sceneMoon, title: '月亮小剧场', tag: 'moon' },
-  { src: assets.sceneSteps, title: '天台风声', tag: 'stairs' },
-  { src: assets.sceneCandySky, title: '糖色天空', tag: 'drift' },
-  { src: assets.sceneCloseup, title: '近距离心跳', tag: 'close' },
+  { src: assets.sceneMoon, title: '月亮小剧场', tag: '月亮' },
+  { src: assets.sceneSteps, title: '小天台风声', tag: '台阶' },
+  { src: assets.sceneCandySky, title: '糖果天空', tag: '糖糖' },
+  { src: assets.sceneCloseup, title: '近距离心跳', tag: '靠近' },
 ];
 
 const materialScenes = [
   {
     id: 'glass-room',
     src: assets.materialGlassRoom,
-    title: '玻璃房间',
-    tag: 'fresh 01',
+    title: '玻璃糖屋',
+    tag: '小窝 01',
     accent: '#8be5ff',
-    copy: '透明反光和室内景深很适合轮播层，不跟月相胶片的室外楼梯撞图。',
+    copy: '这是她最喜欢的发呆角落，玻璃外面的世界都被柔成了糖渍味。',
   },
   {
     id: 'long-pink',
     src: assets.materialLongPink,
-    title: '粉色长镜',
-    tag: 'fresh 02',
+    title: '粉粉长廊',
+    tag: '小窝 02',
     accent: '#ff7fa8',
-    copy: '纵向构图拿来做 Carousel 的压缩透视，和图册区不共用来源。',
+    copy: '走到长廊尽头就能拐进她的心里，但她不会告诉你密码是什么。',
   },
   {
     id: 'wide-lilac',
     src: assets.materialWideLilac,
-    title: '浅紫横幅',
-    tag: 'fresh 03',
+    title: '紫色梦境',
+    tag: '小窝 03',
     accent: '#b68dff',
-    copy: '横幅图负责轻盈的中景，不复用 Moon、Bits 或 Gallery 的任何画面。',
+    copy: '紫色的傍晚最适合躺平，她说她偷偷想把每天都过成这样。',
   },
   {
     id: 'sky-panorama',
     src: assets.materialSkyPanorama,
-    title: '远景天幕',
-    tag: 'fresh 04',
+    title: '远空天幕',
+    tag: '小窝 04',
     accent: '#7fd7ff',
-    copy: '大远景只在素材台出现，用来托住 Aurora 和 FlowingMenu 的空间感。',
+    copy: '远远的天空里有一颗只属于她的小星星，她说它叫「秘密」。',
   },
 ];
 
@@ -257,12 +257,12 @@ const materialMenuItems = materialScenes.map((scene) => ({
 }));
 
 const typePanels = [
-  ['split', '标题拆开进场，像画面被逐帧点亮。'],
-  ['pressure', '鼠标靠近，字重会起伏，信息层开始有触感。'],
-  ['circle', '环形文字给角色旁边补一个轻量仪表。'],
-  ['shine', '重点词扫过一点光，但不做俗气渐变字。'],
-  ['decrypt', '乱码解开后再定格，让标题有一点系统启动感。'],
-  ['typing', '逐字输入适合做节奏，不会一整块文案砸下来。'],
+  ['拆糖', '今天的糖剥到一半舍不得吃了，她想留到傍晚再说。'],
+  ['触触', '她说被偷偷碰了一下耳朵，脸到现在还有点烫。'],
+  ['圆圆', '糖果的形状最好是圆圆的，咬下去才不会划到舌尖。'],
+  ['亮亮', '她偷偷许的愿望都很小，比如今天的甜筒不要化太快。'],
+  ['解谜', '她说她最近的小心事像一道谜，连自己也不太想解开。'],
+  ['打字', '今天写了三个字就停下来了，因为忽然听见窗外有风。'],
 ];
 
 type ChapterKind = 'garden' | 'moon';
@@ -289,8 +289,8 @@ const chapterTransitions: ChapterTransitionData[] = [
     toColor: '#fff7fb',
     accent: '#ff5f8f',
     glow: 'rgba(255, 188, 210, 0.55)',
-    quote: '灯关下来一点，让她自己醒。',
-    whisper: 'fade · bloom · drift',
+    quote: '把灯关小一点，让她自己慢慢醒过来。',
+    whisper: '柔光 · 花瓣 · 风',
     orbFrom: { x: 78, y: 86 },
     orbTo: { x: 18, y: 16 },
   },
@@ -302,8 +302,8 @@ const chapterTransitions: ChapterTransitionData[] = [
     toColor: '#06070a',
     accent: '#54f4ff',
     glow: 'rgba(168, 220, 255, 0.5)',
-    quote: '把白天合上，月相会自己亮起来。',
-    whisper: 'breathe · phase · archive',
+    quote: '把白天悄悄合上，月亮就会自己亮起来啦。',
+    whisper: '呼吸 · 月相 · 收藏',
     orbFrom: { x: 22, y: 18 },
     orbTo: { x: 80, y: 84 },
   },
@@ -455,25 +455,25 @@ function SplitReveal() {
     <section className="cutout-section" id="profile">
       <div className="cutout-sticky">
         <div className="cutout-copy reveal-item">
-          <p className="section-index">02 / Cutout Reveal</p>
+          <p className="section-index">02 / 看板娘登场</p>
           <h2>
-            <BlurText text="这次换个新看板娘，从光里飘出来。" as="span" by="char" delay={16} />
+            <BlurText text="她从光里飘出来的那一瞬，连星星都屏住了呼吸。" as="span" by="char" delay={16} />
           </h2>
           <ScrollReveal
-            text="首屏继续保留硬核轨道感，往下就进入更像互动 PV 的段落。图片不再乖乖待在卡片里，而是被切片、遮罩、光线和滚动节奏一点点推到你面前。"
+            text="她不喜欢正面打招呼，总是先从光里探出半边头。耳朵会跟着风动一下，影子也跟着晃。靠近一点，就能听见她在偷偷哼今天最喜欢的歌。"
             as="p"
             direction="right"
             delay={28}
           />
           <div className="signal-strip">
             <span>
-              <MotionToken text="clip-path mask" variant={2} />
+              <MotionToken text="今日心动" variant={2} />
             </span>
             <span>
-              <MotionToken text="scroll driven" variant={1} />
+              <MotionToken text="甜甜的风" variant={1} />
             </span>
             <span>
-              <MotionToken text="anime cutout" variant={0} />
+              <MotionToken text="悄悄上线" variant={0} />
             </span>
           </div>
         </div>
@@ -488,16 +488,16 @@ function SplitReveal() {
           <div className="cutout-shadow" aria-hidden="true" />
           <div className="cutout-light light-a" aria-hidden="true" />
           <div className="cutout-light light-b" aria-hidden="true" />
-          <img className="cutout-character" src={assets.characterCutout} alt="BTORN anime character cutout" />
+          <img className="cutout-character" src={assets.characterCutout} alt="看板娘剪影" />
           <div className="cutout-panel panel-left" aria-hidden="true" />
           <div className="cutout-panel panel-right" aria-hidden="true" />
           <div className="cutout-chip chip-a">
             <ScanLine size={16} />
-            MASK ACTIVE
+            心动 ON
           </div>
           <div className="cutout-chip chip-b">
             <Sparkles size={16} />
-            CUTOUT 92%
+            闪光 92%
           </div>
         </div>
       </div>
@@ -627,7 +627,7 @@ function WorksLab() {
           <div className="works-index">
             <h2>
               <span />
-              <SplitText text="Works Category" delay={20} />
+              <SplitText text="梦境分类" delay={20} />
             </h2>
             <div className="works-index-list" role="tablist" aria-label="Works categories">
               {workCategories.map((item, index) => (
@@ -701,8 +701,8 @@ function WorksLab() {
           </div>
 
           <div className="works-status" data-state={isPlaying ? 'playing' : 'paused'}>
-            <span className="works-status-play">PLAY</span>
-            <span className="works-status-pause">PAUSE</span>
+            <span className="works-status-play">播放中</span>
+            <span className="works-status-pause">暂停啦</span>
           </div>
           <time className="works-time">{timecode}</time>
         </div>
@@ -816,11 +816,11 @@ function GardenStage() {
     <section className="section garden-section" id="garden">
       <SplashCursorLayer className="garden-splash-layer" />
       <div className="garden-copy" data-fade>
-        <p className="section-index">04 / Garden Drift</p>
+        <p className="section-index">04 / 花园午后</p>
         <h2>
-          <TextPressure text="花瓣别贴死，让她像被风悄悄托起来。" />
+          <TextPressure text="下午三点，花瓣轻得像一句没说出口的喜欢。" />
         </h2>
-        <BlurText text="像把一小段夏天藏进旧电视里，信号偶尔晃一下，她就从花影前面轻轻浮出来。" as="p" by="char" delay={10} />
+        <BlurText text="风把花瓣吹到她的睫毛上，她也没舍得拨开。她说这种小事不要紧，反正今天的猫已经睡饱了。" as="p" by="char" delay={10} />
       </div>
       <div className="garden-stage" data-fade>
         <div className="garden-tv" aria-hidden="true">
@@ -842,7 +842,7 @@ function GardenStage() {
           <span />
           <span />
         </div>
-        <img className="garden-cutout cutout-lilac" src={assets.cutoutLilacDriver} alt="粉发角色抠图" />
+        <img className="garden-cutout cutout-lilac" src={assets.cutoutLilacDriver} alt="粉发小天使" />
         <div className="petal-field" aria-hidden="true">
           {Array.from({ length: 18 }, (_, index) => (
             <span
@@ -868,11 +868,11 @@ function MoonArchive() {
   return (
     <section className="section moon-section" id="moon">
       <div className="moon-copy" data-fade>
-        <p className="section-index">05 / Moon Archive</p>
+        <p className="section-index">05 / 月亮档案</p>
         <h2>
-          <SplitText text="把新图做成会呼吸的月相胶片。" delay={28} />
+          <SplitText text="月亮今晚有点害羞，只敢露半张脸。" delay={28} />
         </h2>
-        <ScrollReveal text="卡片不是平铺，前后景会错开。靠近时画面会亮一点，像你从一排小窗前走过去。" as="p" direction="right" delay={26} />
+        <ScrollReveal text="她说没关系，她也是。所以两个人就这样隔着窗户看了好久，谁也没先说一句晚安。" as="p" direction="right" delay={26} />
       </div>
       <div className="moon-orbit" aria-hidden="true">
         <span />
@@ -893,7 +893,7 @@ function MoonArchive() {
           </figure>
         ))}
       </div>
-      <img className="moon-cutout cutout-flora" src={assets.cutoutFlora} alt="花丛角色抠图" data-fade />
+      <img className="moon-cutout cutout-flora" src={assets.cutoutFlora} alt="花丛里的小天使" data-fade />
     </section>
   );
 }
@@ -904,12 +904,12 @@ function LanyardInterlude() {
   return (
     <section className="lanyard-section" id="lanyard" aria-label="Lanyard transition">
       <div className="lanyard-copy" data-fade>
-        <p className="section-index">05.5 / Lanyard Pass</p>
+        <p className="section-index">05.5 / 摇晃的小挂件</p>
         <h2>
-          <TextPressure text="这次换成真的 3D 吊牌。" />
+          <TextPressure text="脖子上的小挂牌，一直摇呀摇。" />
         </h2>
         <BlurText
-          text="哥哥说的是 React Bits 官网那个 Lanyard：能拖拽、有物理摆动，绳子会跟着惯性甩起来。"
+          text="像有人在悄悄给它讲笑话，所以它今天比平常多甩了几下。她假装没看见，但嘴角偷偷翘了起来。"
           as="p"
           by="char"
           delay={9}
@@ -931,22 +931,22 @@ function LanyardInterlude() {
 
 function BitsShowroom() {
   const dockItems = [
-    { href: '#top', label: 'Top', icon: <Orbit size={20} /> },
-    { href: '#works', label: 'Works', icon: <ScanLine size={20} /> },
-    { href: '#bits', label: 'Bits', icon: <Sparkles size={20} /> },
-    { href: '#stream', label: 'Stream', icon: <Zap size={20} /> },
-    { href: '#materials', label: 'Assets', icon: <Layers3 size={20} /> },
-    { href: '#type', label: 'Type', icon: <ArrowRight size={20} /> },
-    { href: '#contact', label: 'Talk', icon: <Mail size={20} /> },
+    { href: '#top', label: '回家', icon: <Orbit size={20} /> },
+    { href: '#works', label: '小剧场', icon: <ScanLine size={20} /> },
+    { href: '#bits', label: '糖罐', icon: <Sparkles size={20} /> },
+    { href: '#stream', label: '流光', icon: <Zap size={20} /> },
+    { href: '#materials', label: '收藏柜', icon: <Layers3 size={20} /> },
+    { href: '#type', label: '会动的字', icon: <ArrowRight size={20} /> },
+    { href: '#contact', label: '聊聊', icon: <Mail size={20} /> },
   ];
 
   return (
     <section className="section bits-showroom-section" id="bits">
       <div className="bits-showroom-head" data-fade>
-        <p className="section-index">06 / React Bits Showroom</p>
+        <p className="section-index">06 / 小玩具陈列室</p>
         <h2>
           <TextType
-            text={['这次是真的全铺开。', '这些字也会自己醒过来。']}
+            text={['今天的糖糖们都拿出来啦~', '它们也会偷偷醒过来哦。']}
             typingSpeed={48}
             deletingSpeed={24}
             pauseDuration={1500}
@@ -954,7 +954,7 @@ function BitsShowroom() {
           />
         </h2>
         <ScrollReveal
-          text="从文字、图片、数据、导航到横向信息流都接进来了。不是组件清单，是把它们塞进页面节奏里。"
+          text="今天捡到的小宝物：半颗星星、一朵会眨眼的云、还有一阵忘了名字的甜甜的风。她说没关系，反正没记住的就当做明天再认识一次。"
           as="p"
           direction="left"
           delay={30}
@@ -963,13 +963,13 @@ function BitsShowroom() {
 
       <div className="bits-showroom-grid">
         <div className="bits-command-panel" data-fade>
-          <ShinyText text="React Bits control dock" className="bits-kicker" speed={2.1} />
+          <ShinyText text="小窝の七颗心情" className="bits-kicker" speed={2.1} />
           <Dock items={dockItems} className="bits-dock" />
           <div className="bits-command-copy">
             <h3>
-              <SplitText text="Dock 不只是装饰，它能直接跳段落。" delay={24} />
+              <SplitText text="糖盒里住着七颗小心情，每天醒来都会自己排好队。" delay={24} />
             </h3>
-            <BlurText text="鼠标靠过去会放大，像一个给这个站专门做的小启动器，宝宝你往下看就会发现它不是孤零零的组件。" as="p" by="char" delay={8} />
+            <BlurText text="她说她每天都要数一遍这些糖糖，怕漏掉哪一颗会委屈地哭出来，那样今晚就睡不着啦。" as="p" by="char" delay={8} />
           </div>
         </div>
 
@@ -982,10 +982,10 @@ function BitsShowroom() {
         >
           <div className="bits-pixel-caption">
             <span>
-              <MotionToken text="PixelTransition" variant={4} />
+              <MotionToken text="不要看啦" variant={4} />
             </span>
             <strong>
-              <SplitText text="hover 换画面" delay={18} />
+              <SplitText text="她现在不太好看（其实超好看）" delay={18} />
             </strong>
           </div>
         </PixelTransition>
@@ -994,10 +994,10 @@ function BitsShowroom() {
           className="bits-tilted-feature"
           imageSrc={assets.bitsOrangePortrait}
           altText="orange portrait illustration"
-          captionText="TiltedCard / pointer depth"
+          captionText="今天也想被你偷偷喜欢"
           rotateAmplitude={16}
           scaleOnHover={1.04}
-          overlayContent={<ShinyText text="hover me" speed={1.8} />}
+          overlayContent={<ShinyText text="摸摸我嘛" speed={1.8} />}
           data-fade
         />
       </div>
@@ -1014,24 +1014,24 @@ function BitsStream() {
 
   return (
     <section className="section bit-stream-section" id="stream">
-      <ScrollFloat text="BTORN / REACT BITS / MOTION LAYER" repeat={5} speed={24} />
+      <ScrollFloat text="BTORN · 心动 · 流光糖屋" repeat={5} speed={24} />
       <ScrollVelocity
         className="bit-stream-velocity"
         texts={[
-          <span>BlurText / SplitText / ShinyText / TextPressure</span>,
-          <span>TextType / DecryptedText / TrueFocus / CurvedLoop</span>,
+          <span>柔糖 / 拆糖 / 闪糖 / 触触糖</span>,
+          <span>打字糖 / 解谜糖 / 焦点糖 / 弯弯糖</span>,
         ]}
         velocity={28}
         numCopies={4}
       />
       <div className="bit-stream-inner">
         <div className="bit-stream-copy" data-fade>
-          <p className="section-index">07 / Moving Bits Layer</p>
+          <p className="section-index">07 / 会跑的心跳层</p>
           <h2>
-            <BlurText text="让组件自己开始流动。" as="span" by="char" delay={18} />
+            <BlurText text="心跳今天跑得有点快。" as="span" by="char" delay={18} />
           </h2>
           <ScrollReveal
-            text="这一段专门给 Bits 当舞台：上面浮字，下面无限滚动，中间用计数器告诉你这次真的加量了。"
+            text="她跑得很快，因为想第一个跑到傍晚，看晚霞把屋顶染成草莓味。她说一个人去也行，但其实今天偷偷想到了你哦。"
             as="p"
             direction="right"
             delay={32}
@@ -1069,12 +1069,12 @@ function MaterialConsole() {
       <Silk className="material-silk" color="#ff5f8f" speed={9} scale={1.15} noiseIntensity={0.7} rotation={-10} />
 
       <div className="material-copy" data-fade>
-        <p className="section-index">08 / Fresh Asset Console</p>
+        <p className="section-index">08 / 闪光宝物柜</p>
         <h2>
-          <TextPressure text="素材要被编排，不是重复贴。" />
+          <TextPressure text="宝物柜的钥匙藏在第三层。" />
         </h2>
         <BlurText
-          text="我把哥哥新塞进来的图拆成独立职责：这一页只负责新素材调度，靠 Aurora、Silk、Carousel 和 FlowingMenu 做页面级互动，不再让鼠标拖出小图。"
+          text="旁边躺着一片去年的樱花瓣，一颗忘了名字的小石头，还有一封她想了很久但没寄出去的信。她说不寄了，反正风也会替她送过去。"
           as="p"
           by="char"
           delay={8}
@@ -1107,16 +1107,16 @@ function TypeReactor() {
   return (
     <section className="section type-section" id="type">
       <div className="type-orbit" aria-hidden="true">
-        <CircularText text="BTORN · TYPE · REACT BITS · " radius={86} spinDuration={22} />
+        <CircularText text="BTORN · 字 · 跳舞屋 · " radius={86} spinDuration={22} />
       </div>
 
       <div className="type-copy" data-fade>
-        <p className="section-index">09 / Typography Reactor</p>
+        <p className="section-index">09 / 会呼吸的字</p>
         <h2>
-          <TextPressure text="文字也要能被摸到。" />
+          <TextPressure text="她的字写得软软的。" />
         </h2>
         <ScrollReveal
-          text="普通说明文字我收了一半，剩下的用字重、分裂、解码、输入、环形路径和光扫来讲。这样页面会更像互动视觉稿，不像素材说明书。"
+          text="每个标点都像在撒娇，每个句号都不舍得停下来。她说被晚风吹过的字会做梦，特别是那些藏着小秘密的。"
           as="p"
           direction="left"
           delay={30}
@@ -1125,19 +1125,19 @@ function TypeReactor() {
 
       <div className="type-grid">
         <StarBorder className="type-circular-card" color="rgba(84, 244, 255, 0.88)" speed="10s" thickness={1} data-fade>
-          <CircularText text="CUTOUT · LAYER · MOTION · " radius={78} spinDuration={18} reverse />
-          <img src={assets.characterTechHuman} alt="tech character cutout" />
-          <span className="type-cutout-label">transparent cutout layer</span>
+          <CircularText text="今天 · 也想 · 喜欢你 · " radius={78} spinDuration={18} reverse />
+          <img src={assets.characterTechHuman} alt="小天使剪影" />
+          <span className="type-cutout-label">悄悄说一声哦</span>
         </StarBorder>
 
         <GlareHover className="type-statement" glareColor="rgba(255, 95, 143, 0.34)" data-fade>
-          <ShinyText text="not a caption, a control surface" speed={2.3} />
+          <ShinyText text="每个字里都藏着一颗心跳" speed={2.3} />
           <h3>
-            <SplitText text="把文案做成会呼吸的界面零件。" />
+            <SplitText text="把每一个字都偷偷放进糖罐里。" />
           </h3>
-          <BlurText text="这里的文字不再只是解释效果，而是跟图片同级：它会进场、会扫光、会被指针压一下。" as="p" by="char" delay={9} />
+          <BlurText text="她最喜欢的字是「软」，因为念出来嘴角就会自己翘起来。第二喜欢的是「甜」，但是说出来太害羞了。" as="p" by="char" delay={9} />
           <TrueFocus
-            sentence="soft sharp alive signal"
+            sentence="软 甜 暖 心动"
             manualMode
             blurAmount={4}
             borderColor="#ff5f8f"
@@ -1168,9 +1168,9 @@ function MoodShelf() {
   return (
     <section className="section stack-section" id="stack">
       <div className="section-heading compact" data-fade>
-        <p className="section-index">10 / Technique Matrix</p>
+        <p className="section-index">10 / 小心思收藏</p>
         <h2>
-          <BlurText text="技术力藏在细节里，不靠一堆说明文字撑场。" as="span" by="char" delay={14} />
+          <BlurText text="口袋里装的不是糖纸，是她每天偷偷攒下来的小心思。" as="span" by="char" delay={14} />
         </h2>
       </div>
       <div className="stack-console" data-fade>
@@ -1203,11 +1203,11 @@ function NotesTimeline() {
   return (
     <section className="section timeline-section" id="notes">
       <div className="section-heading" data-fade>
-        <p className="section-index">11 / Motion Script</p>
+        <p className="section-index">11 / 创作日记</p>
         <h2>
-          <TextType text="页面应该像分镜，不是从上到下摆资料。" loop={false} typingSpeed={42} startOnVisible />
+          <TextType text="她有一本小日记，里面记满了今天又喜欢了谁。" loop={false} typingSpeed={42} startOnVisible />
         </h2>
-        <BlurText text="每一段都有自己的进入方式：先切开，再推进，再横向拖出一组画面。" as="p" by="char" delay={10} />
+        <BlurText text="每一页都被偷偷折了角，那是她准备明天再看一遍的暗号。她说没人知道也没关系，反正记住的人是自己。" as="p" by="char" delay={10} />
       </div>
       <div className="timeline">
         {notes.map(([date, text], index) => (
@@ -1227,11 +1227,11 @@ function Gallery() {
   return (
     <section className="section gallery-section" id="gallery">
       <div className="section-heading" data-fade>
-        <p className="section-index">12 / Pinned Gallery</p>
+        <p className="section-index">12 / 心动小档案</p>
         <h2>
-          <SplitText text="图册改成横向胶片，滚动时一张张推出来。" delay={24} />
+          <SplitText text="今天又收集到一些让人心跳加速的瞬间。" delay={24} />
         </h2>
-        <BlurText text="图片本身很好看，就别把它们塞进普通网格里。让它们像一段可拖动的片尾。" as="p" by="char" delay={9} />
+        <BlurText text="看完之后请记得把心跳借她一下，就一下下哦。她说她会还的，可能会忘记还，但一定会还。" as="p" by="char" delay={9} />
       </div>
       <div className="gallery-track" aria-label="Selected anime mood crops">
         {gallery.map((item, index) => (
@@ -1263,15 +1263,15 @@ function Gallery() {
 function Philosophy() {
   return (
     <section className="section signal-section" id="about">
-      <img className="signal-image" src={assets.signalFreshFlower} alt="Flower anime atmosphere" data-fade />
+      <img className="signal-image" src={assets.signalFreshFlower} alt="花花的小心情" data-fade />
       <div className="signal-panel" data-fade>
         <Layers3 size={32} />
-        <p className="section-index">13 / Design Attitude</p>
+        <p className="section-index">13 / 设计的小心思</p>
         <h2>
-          <TextPressure text="可爱可以很软，但页面不能软趴趴。" />
+          <TextPressure text="可爱不是装出来的。" />
         </h2>
         <ScrollReveal
-          text="这一版把“二次元可爱”和“高级互动”放在一起：图片要有景深，滚动要有分镜，每个区域都要有自己的出场方式。这样才像真的做过设计，而不是把素材贴上去。"
+          text="她说她不擅长正经事，但很擅长把每一天都过得像糖纸一样亮亮的。早上醒来先发会儿呆，傍晚等晚霞，深夜数星星。这样的日子也挺好的呀。"
           as="p"
           direction="down"
           delay={26}
@@ -1290,11 +1290,11 @@ function ContactFooter() {
   return (
     <footer className="contact-footer" id="contact">
       <div>
-        <p className="section-index">14 / 联系</p>
+        <p className="section-index">14 / 悄悄话</p>
         <h2>
           <TextPressure text="BTORN" />
         </h2>
-        <BlurText text="如果你也刚好喜欢这里，就悄悄打个招呼吧。" as="p" by="char" delay={12} />
+        <BlurText text="如果你也喜欢这里，那我们一定会成为朋友的呀。" as="p" by="char" delay={12} />
       </div>
       <div className="contact-links" aria-label="Contact links">
         {contactLinks.map(({ href, label, icon: Icon, external }) => (
@@ -1307,9 +1307,10 @@ function ContactFooter() {
         ))}
       </div>
       <StarBorder className="terminal-star" color="rgba(84, 244, 255, 0.9)" speed="8s" thickness={1}>
-        <pre className="terminal-block">{`今日留言
-要是你刚好喜欢粉色、夜风和一点点闪光，
-那就把这里当成一扇小窗吧。`}</pre>
+        <pre className="terminal-block">{`今日の小心情
+风轻轻的，月亮淡淡的，
+口袋里有半颗化掉的糖。
+今天也想悄悄喜欢你哦 ✦`}</pre>
       </StarBorder>
     </footer>
   );
