@@ -1,0 +1,19 @@
+{
+  "text": {},
+  "sections": {
+    "order": [
+      "hero",
+      "profile",
+      "works",
+      "garden",
+      "moon",
+      "bits",
+      "materials",
+      "notes",
+      "gallery",
+      "about",
+      "contact"
+    ],
+    "hidden": []
+  }
+}

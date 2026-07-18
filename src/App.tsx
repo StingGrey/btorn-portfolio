@@ -11,7 +11,6 @@ import {
   ScanLine,
   Send,
   Sparkles,
-  Zap,
 } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -20,19 +19,13 @@ import {
   BlurText,
   Carousel,
   ClickSpark,
-  CircularText,
-  CountUp,
   DecryptedText,
   Dock,
   FlowingMenu,
-  GlareHover,
-  InfiniteScroll,
   Magnet,
   ScrambledText,
   ScrollReveal,
   PixelTransition,
-  ScrollFloat,
-  ScrollVelocity,
   ShinyText,
   Silk,
   SplitText,
@@ -41,53 +34,40 @@ import {
   TextType,
   TextPressure,
   TiltedCard,
-  TrueFocus,
 } from './components/react-bits';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const WebglBackdrop = lazy(() => import('./components/webgl-backdrop/WebglBackdrop'));
-const Lanyard = lazy(() => import('./components/lanyard/Lanyard'));
-const SplashCursor = lazy(() => import('./components/splash-cursor/SplashCursor'));
 
 const assets = {
-  characterTech: '/assets/character-tech.webp',
-  characterCutout: '/assets/character-orbit-cutout.png',
-  gallerySky: '/assets/gallery-sky.webp',
-  galleryTeam: '/assets/gallery-team.webp',
-  galleryPinkArrow: '/assets/gallery-pink-arrow.webp',
-  galleryNight: '/assets/gallery-night.webp',
-  galleryStudy: '/assets/gallery-study.webp',
-  galleryExtra: '/assets/gallery-extra.webp',
-  galleryFreshReader: '/assets/gallery-fresh-reader.jpg',
-  galleryFreshBlue: '/assets/gallery-fresh-blue.jpg',
-  galleryFreshPoster: '/assets/gallery-fresh-poster.jpg',
-  cutoutLilacDriver: '/assets/cutout-lilac-driver.png',
-  cutoutFlora: '/assets/cutout-flora.png',
-  characterTechHuman: '/assets/character-tech-cutout-human.png',
-  sceneGarden: '/assets/scene-garden.webp',
-  sceneMoon: '/assets/scene-moon.webp',
-  sceneSteps: '/assets/scene-steps.webp',
-  sceneCandySky: '/assets/scene-candy-sky.webp',
-  sceneCloseup: '/assets/scene-closeup.webp',
-  materialGlassRoom: '/assets/material-glass-room.jpg',
-  materialLongPink: '/assets/material-long-pink.jpg',
-  materialWideLilac: '/assets/material-wide-lilac.jpg',
-  materialSkyPanorama: '/assets/material-sky-panorama.jpg',
-  bitsCandyBath: '/assets/bits-candy-bath.jpg',
-  bitsSchoolAngel: '/assets/bits-school-angel.jpg',
-  bitsOrangePortrait: '/assets/bits-orange-portrait.jpg',
-  signalFreshFlower: '/assets/signal-fresh-flower.jpg',
+  characterTech: 'assets/character-tech.webp',
+  characterCutout: 'assets/character-orbit-cutout.png',
+  gallerySky: 'assets/gallery-sky.webp',
+  galleryTeam: 'assets/gallery-team.webp',
+  galleryPinkArrow: 'assets/gallery-pink-arrow.webp',
+  galleryNight: 'assets/gallery-night.webp',
+  galleryStudy: 'assets/gallery-study.webp',
+  galleryExtra: 'assets/gallery-extra.webp',
+  galleryFreshReader: 'assets/gallery-fresh-reader.jpg',
+  galleryFreshBlue: 'assets/gallery-fresh-blue.jpg',
+  galleryFreshPoster: 'assets/gallery-fresh-poster.jpg',
+  cutoutLilacDriver: 'assets/cutout-lilac-driver.png',
+  cutoutFlora: 'assets/cutout-flora.png',
+  sceneGarden: 'assets/scene-garden.webp',
+  sceneMoon: 'assets/scene-moon.webp',
+  sceneSteps: 'assets/scene-steps.webp',
+  sceneCandySky: 'assets/scene-candy-sky.webp',
+  sceneCloseup: 'assets/scene-closeup.webp',
+  materialGlassRoom: 'assets/material-glass-room.jpg',
+  materialLongPink: 'assets/material-long-pink.jpg',
+  materialWideLilac: 'assets/material-wide-lilac.jpg',
+  materialSkyPanorama: 'assets/material-sky-panorama.jpg',
+  bitsCandyBath: 'assets/bits-candy-bath.jpg',
+  bitsSchoolAngel: 'assets/bits-school-angel.jpg',
+  bitsOrangePortrait: 'assets/bits-orange-portrait.jpg',
+  signalFreshFlower: 'assets/signal-fresh-flower.jpg',
 };
-
-const stacks = [
-  { name: '草莓星屑', text: '她最喜欢踩月光走路，因为踩着踩着就会冒出一小颗一小颗星星。', bit: '今晚 03:14' },
-  { name: '牛奶引力', text: '靠近她的时候要把脚步放轻哦，她的耳朵尖尖的，会偷偷竖起来。', bit: '阳台风口' },
-  { name: '月光柔焦', text: '今晚的月亮把她的脸照得太亮，她只好假装在数远处的云。', bit: '满月 -1°' },
-  { name: '亮晶晶外框', text: '她偷偷给最重要的几件事都套上了一圈星河，怕它们半夜走丢。', bit: '抽屉第三格' },
-  { name: '云端小宇宙', text: '她的小宇宙里只住着她自己，还有一只会发光的猫猫。', bit: '宇宙北角' },
-  { name: '时间软糖', text: '时间在这里走得慢一点，是因为糖罐里的糖实在太香了。', bit: '糖罐底层' },
-];
 
 const notes = [
   ['梦境 01', '今天梦见自己变成了一颗会发光的糖，被偷偷藏在最喜欢的人口袋里。'],
@@ -103,38 +83,6 @@ const gallery = [
   { src: assets.galleryFreshPoster, title: '撕下的海报', tag: '新拣到的' },
   { src: assets.galleryStudy, title: '学习小角落', tag: '偶尔用功' },
   { src: assets.galleryExtra, title: '藏起来的宝物', tag: '偷偷藏好' },
-];
-
-const bitMetrics = [
-  { label: '今天偷藏的糖', value: 28, suffix: '+' },
-  { label: '想你想到的次数', value: 12, suffix: '次' },
-  { label: '心跳浓度', value: 96, suffix: '%' },
-];
-
-const streamItems = [
-  '闪闪糖',
-  '漂浮云',
-  '无限糖',
-  '亮晶晶',
-  '触触字',
-  '打字机',
-  '解谜糖',
-  '心跳焦点',
-  '揭开纸',
-  '风速糖',
-  '弯弯糖',
-  '跳跳字',
-  '圆圆字',
-  '极光糖',
-  '丝绸云',
-  '旋转木马',
-  '流光菜单',
-  '引力糖',
-  '聚光糖',
-  '星框糖',
-  '点点星',
-  '像素糖',
-  '倾斜糖',
 ];
 
 type MotionTokenProps = {
@@ -256,57 +204,21 @@ const materialMenuItems = materialScenes.map((scene) => ({
   meta: scene.tag,
 }));
 
-const typePanels = [
-  ['拆糖', '今天的糖剥到一半舍不得吃了，她想留到傍晚再说。'],
-  ['触触', '她说被偷偷碰了一下耳朵，脸到现在还有点烫。'],
-  ['圆圆', '糖果的形状最好是圆圆的，咬下去才不会划到舌尖。'],
-  ['亮亮', '她偷偷许的愿望都很小，比如今天的甜筒不要化太快。'],
-  ['解谜', '她说她最近的小心事像一道谜，连自己也不太想解开。'],
-  ['打字', '今天写了三个字就停下来了，因为忽然听见窗外有风。'],
-];
+const materialCarouselItems = materialScenes.map((scene) => ({
+  id: scene.id,
+  title: scene.title,
+  tag: scene.tag,
+  src: scene.src,
+  accent: scene.accent,
+  description: scene.copy,
+}));
 
-type ChapterKind = 'garden' | 'moon';
-type ChapterTransitionData = {
-  id: string;
-  kind: ChapterKind;
-  fromColor: string;
-  midColor: string;
-  toColor: string;
-  accent: string;
-  glow: string;
-  quote: string;
-  whisper: string;
-  orbFrom: { x: number; y: number };
-  orbTo: { x: number; y: number };
-};
-
-const chapterTransitions: ChapterTransitionData[] = [
-  {
-    id: 'garden',
-    kind: 'garden',
-    fromColor: '#010204',
-    midColor: '#2a1424',
-    toColor: '#fff7fb',
-    accent: '#ff5f8f',
-    glow: 'rgba(255, 188, 210, 0.55)',
-    quote: '把灯关小一点，让她自己慢慢醒过来。',
-    whisper: '柔光 · 花瓣 · 风',
-    orbFrom: { x: 78, y: 86 },
-    orbTo: { x: 18, y: 16 },
-  },
-  {
-    id: 'moon',
-    kind: 'moon',
-    fromColor: '#fff7fb',
-    midColor: '#3a2a44',
-    toColor: '#06070a',
-    accent: '#54f4ff',
-    glow: 'rgba(168, 220, 255, 0.5)',
-    quote: '把白天悄悄合上，月亮就会自己亮起来啦。',
-    whisper: '呼吸 · 月相 · 收藏',
-    orbFrom: { x: 22, y: 18 },
-    orbTo: { x: 80, y: 84 },
-  },
+const bitsDockItems = [
+  { href: '#top', label: '回家', icon: <Orbit size={20} /> },
+  { href: '#works', label: '小剧场', icon: <ScanLine size={20} /> },
+  { href: '#bits', label: '糖罐', icon: <Sparkles size={20} /> },
+  { href: '#materials', label: '收藏柜', icon: <Layers3 size={20} /> },
+  { href: '#contact', label: '聊聊', icon: <Mail size={20} /> },
 ];
 
 function useViewportGate<T extends HTMLElement>(preloadMargin = '900px 0px', activeMargin = '260px 0px') {
@@ -513,6 +425,7 @@ function WorksLab() {
   const [transitionId, setTransitionId] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [elapsed, setElapsed] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
   const current = workCategories[activeWork];
 
   const activateWork = useCallback((index: number) => {
@@ -527,7 +440,24 @@ function WorksLab() {
   }, []);
 
   useEffect(() => {
-    if (!isPlaying) {
+    const node = worksRef.current;
+    if (!node) {
+      return;
+    }
+    if (!('IntersectionObserver' in window)) {
+      setIsVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { rootMargin: '200px 0px', threshold: 0 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isPlaying || !isVisible) {
       return;
     }
 
@@ -536,7 +466,7 @@ function WorksLab() {
     }, 80);
 
     return () => window.clearInterval(timer);
-  }, [isPlaying]);
+  }, [isPlaying, isVisible]);
 
   useEffect(() => {
     const markers = Array.from(document.querySelectorAll<HTMLElement>('.works-scroll-marker'));
@@ -563,6 +493,9 @@ function WorksLab() {
   }, [activateWork]);
 
   useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
     const section = worksRef.current;
     if (!section) {
       return;
@@ -607,7 +540,7 @@ function WorksLab() {
       cancelAnimationFrame(frame);
       window.removeEventListener('wheel', onWheel);
     };
-  }, []);
+  }, [isVisible]);
 
   const timecode = useMemo(() => {
     const total = Math.max(0, elapsed);
@@ -716,105 +649,9 @@ function WorksLab() {
   );
 }
 
-function ChapterCard({ data }: { data: ChapterTransitionData }) {
-  const dustSeeds = useMemo(
-    () =>
-      Array.from({ length: 18 }, (_, i) => ({
-        i,
-        x: (i * 53) % 100,
-        y: (i * 37) % 100,
-        size: 1 + ((i * 7) % 3),
-        depth: 0.4 + ((i * 11) % 10) * 0.06,
-      })),
-    [],
-  );
-
-  return (
-    <section
-      className={`interlude interlude-${data.id}`}
-      data-kind={data.kind}
-      style={
-        {
-          '--in-from': data.fromColor,
-          '--in-mid': data.midColor,
-          '--in-to': data.toColor,
-          '--in-accent': data.accent,
-          '--in-glow': data.glow,
-          '--orb-from-x': `${data.orbFrom.x}%`,
-          '--orb-from-y': `${data.orbFrom.y}%`,
-          '--orb-to-x': `${data.orbTo.x}%`,
-          '--orb-to-y': `${data.orbTo.y}%`,
-        } as React.CSSProperties
-      }
-      aria-hidden="true"
-    >
-      <div className="interlude-veil interlude-veil-from" />
-      <div className="interlude-veil interlude-veil-mid" />
-      <div className="interlude-veil interlude-veil-to" />
-      <SplashCursorLayer className="interlude-splash-layer" />
-      <div className="interlude-grain" />
-
-      <div className="interlude-orb">
-        <span className="interlude-orb-core" />
-        <span className="interlude-orb-halo" />
-      </div>
-
-      <div className="interlude-hairline">
-        <span />
-      </div>
-
-      <div className="interlude-dust">
-        {dustSeeds.map((d) => (
-          <span
-            key={d.i}
-            style={
-              {
-                '--d-x': `${d.x}%`,
-                '--d-y': `${d.y}%`,
-                '--d-size': `${d.size}px`,
-                '--d-depth': d.depth,
-              } as React.CSSProperties
-            }
-          />
-        ))}
-      </div>
-
-      <p className="interlude-quote">{data.quote}</p>
-      <p className="interlude-whisper">{data.whisper}</p>
-    </section>
-  );
-}
-
-function SplashCursorLayer({ className = '' }: { className?: string }) {
-  const { ref, isActive } = useViewportGate<HTMLDivElement>('520px 0px', '180px 0px');
-
-  return (
-    <div ref={ref} className={['splash-section-layer', className].filter(Boolean).join(' ')} aria-hidden="true">
-      {isActive && (
-        <div className="splash-section-frame">
-          <Suspense fallback={null}>
-            <SplashCursor
-              SIM_RESOLUTION={128}
-              DYE_RESOLUTION={1440}
-              DENSITY_DISSIPATION={3.5}
-              VELOCITY_DISSIPATION={2}
-              PRESSURE={0.1}
-              CURL={3}
-              SPLAT_RADIUS={0.2}
-              SPLAT_FORCE={6000}
-              COLOR_UPDATE_SPEED={10}
-            />
-          </Suspense>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function GardenStage() {
   return (
     <section className="section garden-section" id="garden">
-      <SplashCursorLayer className="garden-splash-layer" />
       <div className="garden-copy" data-fade>
         <p className="section-index">04 / 花园午后</p>
         <h2>
@@ -898,48 +735,7 @@ function MoonArchive() {
   );
 }
 
-function LanyardInterlude() {
-  const { ref, shouldRender, isActive } = useViewportGate<HTMLDivElement>('1100px 0px', '260px 0px');
-
-  return (
-    <section className="lanyard-section" id="lanyard" aria-label="Lanyard transition">
-      <div className="lanyard-copy" data-fade>
-        <p className="section-index">05.5 / 摇晃的小挂件</p>
-        <h2>
-          <TextPressure text="脖子上的小挂牌，一直摇呀摇。" />
-        </h2>
-        <BlurText
-          text="像有人在悄悄给它讲笑话，所以它今天比平常多甩了几下。她假装没看见，但嘴角偷偷翘了起来。"
-          as="p"
-          by="char"
-          delay={9}
-        />
-      </div>
-
-      <div ref={ref} className="lanyard-physics-stage" data-fade>
-        {shouldRender ? (
-          <Suspense fallback={<div className="lanyard-standby" aria-hidden="true" />}>
-            <Lanyard position={[0, 0, 20]} gravity={[0, -40, 0]} active={isActive} />
-          </Suspense>
-        ) : (
-          <div className="lanyard-standby" aria-hidden="true" />
-        )}
-      </div>
-    </section>
-  );
-}
-
 function BitsShowroom() {
-  const dockItems = [
-    { href: '#top', label: '回家', icon: <Orbit size={20} /> },
-    { href: '#works', label: '小剧场', icon: <ScanLine size={20} /> },
-    { href: '#bits', label: '糖罐', icon: <Sparkles size={20} /> },
-    { href: '#stream', label: '流光', icon: <Zap size={20} /> },
-    { href: '#materials', label: '收藏柜', icon: <Layers3 size={20} /> },
-    { href: '#type', label: '会动的字', icon: <ArrowRight size={20} /> },
-    { href: '#contact', label: '聊聊', icon: <Mail size={20} /> },
-  ];
-
   return (
     <section className="section bits-showroom-section" id="bits">
       <div className="bits-showroom-head" data-fade>
@@ -964,7 +760,7 @@ function BitsShowroom() {
       <div className="bits-showroom-grid">
         <div className="bits-command-panel" data-fade>
           <ShinyText text="小窝の七颗心情" className="bits-kicker" speed={2.1} />
-          <Dock items={dockItems} className="bits-dock" />
+          <Dock items={bitsDockItems} className="bits-dock" />
           <div className="bits-command-copy">
             <h3>
               <SplitText text="糖盒里住着七颗小心情，每天醒来都会自己排好队。" delay={24} />
@@ -1005,63 +801,6 @@ function BitsShowroom() {
   );
 }
 
-function BitsStream() {
-  const streamNodes = streamItems.map((item, index) => (
-    <span className="stream-pill" data-tone={index % 3} key={item}>
-      <MotionToken text={item} variant={index} />
-    </span>
-  ));
-
-  return (
-    <section className="section bit-stream-section" id="stream">
-      <ScrollFloat text="BTORN · 心动 · 流光糖屋" repeat={5} speed={24} />
-      <ScrollVelocity
-        className="bit-stream-velocity"
-        texts={[
-          <span>柔糖 / 拆糖 / 闪糖 / 触触糖</span>,
-          <span>打字糖 / 解谜糖 / 焦点糖 / 弯弯糖</span>,
-        ]}
-        velocity={28}
-        numCopies={4}
-      />
-      <div className="bit-stream-inner">
-        <div className="bit-stream-copy" data-fade>
-          <p className="section-index">07 / 会跑的心跳层</p>
-          <h2>
-            <BlurText text="心跳今天跑得有点快。" as="span" by="char" delay={18} />
-          </h2>
-          <ScrollReveal
-            text="她跑得很快，因为想第一个跑到傍晚，看晚霞把屋顶染成草莓味。她说一个人去也行，但其实今天偷偷想到了你哦。"
-            as="p"
-            direction="right"
-            delay={32}
-          />
-        </div>
-
-        <StarBorder className="bit-metric-shell" color="rgba(255, 95, 143, 0.9)" speed="9s" thickness={1} data-fade>
-          <div className="bit-metric-grid">
-            {bitMetrics.map((metric) => (
-              <div className="bit-metric" key={metric.label}>
-                <strong>
-                  <CountUp to={metric.value} suffix={metric.suffix} duration={1700} />
-                </strong>
-                <span>
-                  <MotionToken text={metric.label} variant={metric.value} />
-                </span>
-              </div>
-            ))}
-          </div>
-        </StarBorder>
-      </div>
-
-      <div className="stream-marquee-stack" data-fade>
-        <InfiniteScroll items={streamNodes} speed={20} />
-        <InfiniteScroll items={streamNodes.slice().reverse()} speed={26} reverse />
-      </div>
-    </section>
-  );
-}
-
 function MaterialConsole() {
   return (
     <section className="section material-section" id="materials">
@@ -1069,7 +808,7 @@ function MaterialConsole() {
       <Silk className="material-silk" color="#ff5f8f" speed={9} scale={1.15} noiseIntensity={0.7} rotation={-10} />
 
       <div className="material-copy" data-fade>
-        <p className="section-index">08 / 闪光宝物柜</p>
+        <p className="section-index">07 / 闪光宝物柜</p>
         <h2>
           <TextPressure text="宝物柜的钥匙藏在第三层。" />
         </h2>
@@ -1084,14 +823,7 @@ function MaterialConsole() {
       <div className="material-stage" data-fade>
         <Carousel
           className="material-carousel"
-          items={materialScenes.map((scene) => ({
-            id: scene.id,
-            title: scene.title,
-            tag: scene.tag,
-            src: scene.src,
-            accent: scene.accent,
-            description: scene.copy,
-          }))}
+          items={materialCarouselItems}
           autoplay
           autoplayDelay={5200}
           loop
@@ -1103,107 +835,11 @@ function MaterialConsole() {
   );
 }
 
-function TypeReactor() {
-  return (
-    <section className="section type-section" id="type">
-      <div className="type-orbit" aria-hidden="true">
-        <CircularText text="BTORN · 字 · 跳舞屋 · " radius={86} spinDuration={22} />
-      </div>
-
-      <div className="type-copy" data-fade>
-        <p className="section-index">09 / 会呼吸的字</p>
-        <h2>
-          <TextPressure text="她的字写得软软的。" />
-        </h2>
-        <ScrollReveal
-          text="每个标点都像在撒娇，每个句号都不舍得停下来。她说被晚风吹过的字会做梦，特别是那些藏着小秘密的。"
-          as="p"
-          direction="left"
-          delay={30}
-        />
-      </div>
-
-      <div className="type-grid">
-        <StarBorder className="type-circular-card" color="rgba(84, 244, 255, 0.88)" speed="10s" thickness={1} data-fade>
-          <CircularText text="今天 · 也想 · 喜欢你 · " radius={78} spinDuration={18} reverse />
-          <img src={assets.characterTechHuman} alt="小天使剪影" />
-          <span className="type-cutout-label">悄悄说一声哦</span>
-        </StarBorder>
-
-        <GlareHover className="type-statement" glareColor="rgba(255, 95, 143, 0.34)" data-fade>
-          <ShinyText text="每个字里都藏着一颗心跳" speed={2.3} />
-          <h3>
-            <SplitText text="把每一个字都偷偷放进糖罐里。" />
-          </h3>
-          <BlurText text="她最喜欢的字是「软」，因为念出来嘴角就会自己翘起来。第二喜欢的是「甜」，但是说出来太害羞了。" as="p" by="char" delay={9} />
-          <TrueFocus
-            sentence="软 甜 暖 心动"
-            manualMode
-            blurAmount={4}
-            borderColor="#ff5f8f"
-            glowColor="rgba(255, 95, 143, 0.42)"
-          />
-        </GlareHover>
-
-        <div className="type-panel-list" data-fade>
-          {typePanels.map(([label, text], index) => (
-            <SpotlightCard
-              className="type-panel"
-              spotlightColor={index % 2 ? 'rgba(255, 95, 143, 0.22)' : 'rgba(84, 244, 255, 0.2)'}
-              key={label}
-          >
-            <span>
-                <MotionToken text={label} variant={index + 2} />
-            </span>
-              <ScrollReveal text={text} as="p" direction={index % 2 ? 'right' : 'up'} delay={18} />
-          </SpotlightCard>
-        ))}
-      </div>
-      </div>
-    </section>
-  );
-}
-
-function MoodShelf() {
-  return (
-    <section className="section stack-section" id="stack">
-      <div className="section-heading compact" data-fade>
-        <p className="section-index">10 / 小心思收藏</p>
-        <h2>
-          <BlurText text="口袋里装的不是糖纸，是她每天偷偷攒下来的小心思。" as="span" by="char" delay={14} />
-        </h2>
-      </div>
-      <div className="stack-console" data-fade>
-        {stacks.map(({ name, text, bit }, index) => (
-          <SpotlightCard
-            className="stack-module"
-            spotlightColor={index % 2 ? 'rgba(255, 95, 143, 0.24)' : 'rgba(84, 244, 255, 0.2)'}
-            key={name}
-          >
-            <div className="module-head">
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              {index % 2 ? <Zap size={16} /> : <Orbit size={16} />}
-            </div>
-            <small className="module-bit">
-              <MotionToken text={bit} variant={index} />
-            </small>
-            <h3>
-              <MotionToken text={name} variant={index + 2} />
-            </h3>
-            <ScrollReveal text={text} as="p" direction={index % 2 ? 'left' : 'right'} delay={18} />
-            <i aria-hidden="true" />
-          </SpotlightCard>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function NotesTimeline() {
   return (
     <section className="section timeline-section" id="notes">
       <div className="section-heading" data-fade>
-        <p className="section-index">11 / 创作日记</p>
+        <p className="section-index">08 / 创作日记</p>
         <h2>
           <TextType text="她有一本小日记，里面记满了今天又喜欢了谁。" loop={false} typingSpeed={42} startOnVisible />
         </h2>
@@ -1227,7 +863,7 @@ function Gallery() {
   return (
     <section className="section gallery-section" id="gallery">
       <div className="section-heading" data-fade>
-        <p className="section-index">12 / 心动小档案</p>
+        <p className="section-index">09 / 心动小档案</p>
         <h2>
           <SplitText text="今天又收集到一些让人心跳加速的瞬间。" delay={24} />
         </h2>
@@ -1266,7 +902,7 @@ function Philosophy() {
       <img className="signal-image" src={assets.signalFreshFlower} alt="花花的小心情" data-fade />
       <div className="signal-panel" data-fade>
         <Layers3 size={32} />
-        <p className="section-index">13 / 设计的小心思</p>
+        <p className="section-index">10 / 设计的小心思</p>
         <h2>
           <TextPressure text="可爱不是装出来的。" />
         </h2>
@@ -1290,7 +926,7 @@ function ContactFooter() {
   return (
     <footer className="contact-footer" id="contact">
       <div>
-        <p className="section-index">14 / 悄悄话</p>
+        <p className="section-index">11 / 悄悄话</p>
         <h2>
           <TextPressure text="BTORN" />
         </h2>
@@ -1321,15 +957,26 @@ export default function App() {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const root = document.documentElement;
 
-    const moveCursor = (event: PointerEvent) => {
-      const x = event.clientX;
-      const y = event.clientY;
+    let pendingX = 0;
+    let pendingY = 0;
+    let cursorFrame = 0;
+    let cleanupResize: (() => void) | null = null;
+    const flushCursor = () => {
+      cursorFrame = 0;
+      const x = pendingX;
+      const y = pendingY;
       root.style.setProperty('--cursor-x', `${x}px`);
       root.style.setProperty('--cursor-y', `${y}px`);
       root.style.setProperty('--mouse-x', `${((x / window.innerWidth) - 0.5).toFixed(4)}`);
       root.style.setProperty('--mouse-y', `${((y / window.innerHeight) - 0.5).toFixed(4)}`);
       root.style.setProperty('--tilt-x', `${((y / window.innerHeight) - 0.5) * -8}deg`);
       root.style.setProperty('--tilt-y', `${((x / window.innerWidth) - 0.5) * 10}deg`);
+    };
+    const moveCursor = (event: PointerEvent) => {
+      pendingX = event.clientX;
+      pendingY = event.clientY;
+      if (cursorFrame) return;
+      cursorFrame = requestAnimationFrame(flushCursor);
     };
 
     window.addEventListener('pointermove', moveCursor);
@@ -1414,139 +1061,6 @@ export default function App() {
         },
       });
 
-      chapterTransitions.forEach((data) => {
-        const sel = `.interlude-${data.id}`;
-        const tl = gsap.timeline({
-          defaults: { ease: 'none' },
-          scrollTrigger: {
-            trigger: sel,
-            start: 'top top',
-            end: '+=320%',
-            pin: true,
-            scrub: 1.4,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-          },
-        });
-
-        tl.fromTo(
-          `${sel} .interlude-veil-mid`,
-          { opacity: 0 },
-          { opacity: 1, duration: 0.5, ease: 'sine.inOut' },
-          0.18,
-        )
-          .to(
-            `${sel} .interlude-veil-mid`,
-            { opacity: 0, duration: 0.4, ease: 'sine.inOut' },
-            0.62,
-          )
-          .fromTo(
-            `${sel} .interlude-veil-to`,
-            { opacity: 0 },
-            { opacity: 1, duration: 0.55, ease: 'sine.inOut' },
-            0.46,
-          )
-          .fromTo(
-            `${sel} .interlude-orb`,
-            { '--orb-progress': 0, scale: 0.4, opacity: 0, filter: 'blur(40px)' },
-            {
-              '--orb-progress': 1,
-              scale: 1,
-              opacity: 1,
-              filter: 'blur(0px)',
-              duration: 0.9,
-              ease: 'power1.inOut',
-            },
-            0.05,
-          )
-          .to(
-            `${sel} .interlude-orb`,
-            { scale: 1.18, opacity: 0, filter: 'blur(60px)', duration: 0.25, ease: 'power2.in' },
-            0.78,
-          )
-          .fromTo(
-            `${sel} .interlude-hairline span`,
-            { scaleX: 0, opacity: 0 },
-            { scaleX: 1, opacity: 1, duration: 0.42, ease: 'power2.out' },
-            0.22,
-          )
-          .to(
-            `${sel} .interlude-hairline span`,
-            { scaleX: 0, opacity: 0, transformOrigin: 'right center', duration: 0.25, ease: 'power2.in' },
-            0.78,
-          )
-          .fromTo(
-            `${sel} .interlude-quote`,
-            { opacity: 0, letterSpacing: '0.6em', y: 14, filter: 'blur(8px)' },
-            {
-              opacity: 1,
-              letterSpacing: '0.04em',
-              y: 0,
-              filter: 'blur(0px)',
-              duration: 0.5,
-              ease: 'power2.out',
-            },
-            0.32,
-          )
-          .to(
-            `${sel} .interlude-quote`,
-            {
-              opacity: 0,
-              letterSpacing: '0.18em',
-              y: -10,
-              filter: 'blur(6px)',
-              duration: 0.22,
-              ease: 'power2.in',
-            },
-            0.82,
-          )
-          .fromTo(
-            `${sel} .interlude-whisper`,
-            { opacity: 0, y: 8 },
-            { opacity: 0.6, y: 0, duration: 0.4, ease: 'power2.out' },
-            0.4,
-          )
-          .to(
-            `${sel} .interlude-whisper`,
-            { opacity: 0, y: -8, duration: 0.2, ease: 'power2.in' },
-            0.84,
-          )
-          .fromTo(
-            `${sel} .interlude-dust span`,
-            { opacity: 0, scale: 0 },
-            {
-              opacity: (i: number) => 0.3 + ((i * 7) % 5) * 0.12,
-              scale: 1,
-              stagger: 0.018,
-              duration: 0.55,
-              ease: 'power2.out',
-            },
-            0.34,
-          )
-          .to(
-            `${sel} .interlude-dust span`,
-            {
-              opacity: 0,
-              y: -22,
-              stagger: 0.012,
-              duration: 0.3,
-              ease: 'power2.in',
-            },
-            0.8,
-          )
-          .fromTo(
-            `${sel} .interlude-grain`,
-            { opacity: 0.32 },
-            { opacity: 0.32, duration: 0.62, ease: 'none' },
-            0.18,
-          )
-          .to(
-            `${sel} .interlude-grain`,
-            { opacity: 0, duration: 0.16, ease: 'power2.in' },
-            0.84,
-          );
-      });
-
       gsap.to('.moon-section', {
         '--moon-scroll': 1,
         ease: 'none',
@@ -1591,10 +1105,30 @@ export default function App() {
           },
         );
       });
+
+      let resizeFrame = 0;
+      const onResize = () => {
+        if (resizeFrame) return;
+        resizeFrame = window.setTimeout(() => {
+          resizeFrame = 0;
+          ScrollTrigger.refresh();
+        }, 180);
+      };
+      window.addEventListener('resize', onResize);
+      cleanupResize = () => {
+        window.removeEventListener('resize', onResize);
+        if (resizeFrame) {
+          window.clearTimeout(resizeFrame);
+        }
+      };
     }
 
     return () => {
       window.removeEventListener('pointermove', moveCursor);
+      if (cursorFrame) {
+        cancelAnimationFrame(cursorFrame);
+      }
+      cleanupResize?.();
       ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
     };
   }, []);
@@ -1615,16 +1149,10 @@ export default function App() {
         <OrbitHero />
         <SplitReveal />
         <WorksLab />
-        <ChapterCard data={chapterTransitions[0]} />
         <GardenStage />
-        <ChapterCard data={chapterTransitions[1]} />
         <MoonArchive />
-        <LanyardInterlude />
         <BitsShowroom />
-        <BitsStream />
         <MaterialConsole />
-        <TypeReactor />
-        <MoodShelf />
         <NotesTimeline />
         <Gallery />
         <Philosophy />
