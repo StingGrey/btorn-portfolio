@@ -41,7 +41,8 @@ import fredokaBold from '@fontsource/fredoka/files/fredoka-latin-600-normal.woff
 import fredokaMedium from '@fontsource/fredoka/files/fredoka-latin-500-normal.woff?url';
 import { assets } from '../../../content/assets';
 import { tagline } from '../content';
-import { buildCrackModel, createCrackState, drawCracks, drawSpread, stepCracks } from './crack';
+import { buildCrackModel, createCrackState, stepCracks } from './crack';
+import { createCrackMasks } from './crackMasks';
 import { extrudeGlyph, flatText, glyphAdvance, loadFont } from './fontGeometry';
 import { createToy, frostedGlass, toyKinds, type ToyKind } from './toys';
 import { disposeObject } from './dispose';
@@ -699,52 +700,32 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
   });
   resizeObserver.observe(host);
 
-  /* ---------- 裂痕和像素扩散的遮罩（2D 画布 → 纹理） ---------- */
-  // 画布按屏幕比例开：裂痕要清楚，长边 1024；扩散本来就是糊的一大片，长边 128 就够，重画快几十倍
-  type Mask = { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; texture: THREE.CanvasTexture };
-  const maskDims = (longSide: number) => {
-    const width = canvas.clientWidth || cssSize.width || 1;
-    const height = canvas.clientHeight || cssSize.height || 1;
-    const k = longSide / Math.max(width, height);
-    return [Math.max(4, Math.round(width * k)), Math.max(4, Math.round(height * k))] as const;
-  };
-  const makeMask = ([width, height]: readonly [number, number]): Mask => {
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = width;
-    maskCanvas.height = height;
-    const maskTexture = new THREE.CanvasTexture(maskCanvas);
-    maskTexture.flipY = false;
-    maskTexture.generateMipmaps = false;
-    maskTexture.minFilter = THREE.LinearFilter;
-    maskTexture.magFilter = THREE.LinearFilter;
-    return { canvas: maskCanvas, ctx: maskCanvas.getContext('2d')!, texture: maskTexture };
-  };
-  // 裂缝是一两个像素宽的细线，遮罩要够细才不会糊成软软的粗管子
-  const CRACK_MASK = 2048;
-  let crackMask = makeMask(maskDims(CRACK_MASK));
-  let spreadMask = makeMask(maskDims(128));
+  /* ---------- 裂痕和像素扩散的遮罩：直接在 GPU 上画（见 crackMasks.ts） ---------- */
+  // 以前是每帧在 2D 画布上重画再上传，Safari 里裂纹一跑每帧就要吃掉 14ms 主线程；
+  // 现在几何体只传一次，每帧只更新每条裂纹跑到了哪，重画几乎不花 CPU
   const crackModel = buildCrackModel();
   const crackState = createCrackState(crackModel);
+  const masks = createCrackMasks(renderer, crackModel, crackState);
   let drawnCrack = -1;
   let drawnOpen = -1;
   let drawnSpread = -1;
-  const paint = (mask: Mask, draw: (ctx: CanvasRenderingContext2D, width: number, height: number) => void) => {
-    const width = canvas.clientWidth || cssSize.width || 1;
-    const height = canvas.clientHeight || cssSize.height || 1;
-    mask.ctx.setTransform(mask.canvas.width / width, 0, 0, mask.canvas.height / height, 0, 0);
-    draw(mask.ctx, width, height);
-    mask.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    mask.texture.needsUpdate = true;
+  const fitMasks = () => {
+    masksNeedFit = false;
+    masks.resize(cssSize.width, cssSize.height);
+    drawnCrack = -1;
+    drawnOpen = -1;
+    drawnSpread = -1;
   };
   const redrawCracks = (crack: number, open: number) => {
-    paint(crackMask, (ctx, width, height) => drawCracks(ctx, width, height, crackModel, crackState, crack, open));
+    masks.drawCracks(crack, open);
     drawnCrack = crack;
     drawnOpen = open;
   };
   const redrawSpread = (spread: number) => {
-    paint(spreadMask, (ctx, width, height) => drawSpread(ctx, width, height, crackModel, crackState, spread));
+    masks.drawSpread(spread);
     drawnSpread = spread;
   };
+  fitMasks();
   redrawCracks(0, 0);
   redrawSpread(0);
 
@@ -768,29 +749,8 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
 
   const scenePass = pass(scene, camera, { samples: 4 });
   const sceneColor = scenePass.getTextureNode('output');
-  const crackSampler = texture(crackMask.texture);
-  const spreadSampler = texture(spreadMask.texture);
-  // 屏幕方向变了：换一块比例合适的画布，采样器指过去，再全部重画
-  const fitMasks = () => {
-    masksNeedFit = false;
-    const crackDims = maskDims(CRACK_MASK);
-    if (Math.abs(crackDims[0] - crackMask.canvas.width) > 8 || Math.abs(crackDims[1] - crackMask.canvas.height) > 8) {
-      const old = crackMask;
-      crackMask = makeMask(crackDims);
-      crackSampler.value = crackMask.texture;
-      old.texture.dispose();
-    }
-    const spreadDims = maskDims(128);
-    if (Math.abs(spreadDims[0] - spreadMask.canvas.width) > 2 || Math.abs(spreadDims[1] - spreadMask.canvas.height) > 2) {
-      const old = spreadMask;
-      spreadMask = makeMask(spreadDims);
-      spreadSampler.value = spreadMask.texture;
-      old.texture.dispose();
-    }
-    drawnCrack = -1;
-    drawnOpen = -1;
-    drawnSpread = -1;
-  };
+  const crackSampler = texture(masks.crackTexture);
+  const spreadSampler = texture(masks.spreadTexture);
 
   const breakdown = Fn(() => {
     const res = screenSize;
@@ -1335,14 +1295,13 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
     if (masksNeedFit) fitMasks();
     const stepped = stepCracks(crackModel, crackState, crack, dt * 1000, reduce || force);
     const pendingSnap = stepped.snap;
-    // 遮罩：裂纹在跑、张开程度变了、故障范围该变宽了才重画；两头的状态（0 和 1）一定画到
-    const ends = (value: number, drawn: number) => (value === 0 || value === 1) && value !== drawn;
+    // 遮罩：裂纹在跑、张开程度变了、故障范围该变宽了才重画（在 GPU 上画，很便宜，所以不再攒着一段才画一次）
     let crackRedrawn = false;
-    if (stepped.changed || Math.abs(crack - drawnCrack) > 0.01 || ends(crack, drawnCrack) || Math.abs(open - drawnOpen) > 0.002 || ends(open, drawnOpen)) {
+    if (stepped.changed || crack !== drawnCrack || open !== drawnOpen) {
       redrawCracks(crack, open);
       crackRedrawn = stepped.changed || drawnSpread < 0;
     }
-    if ((spread > 0 || drawnSpread > 0) && (Math.abs(spread - drawnSpread) > 0.003 || ends(spread, drawnSpread) || (crackRedrawn && spread > 0))) {
+    if ((spread > 0 || drawnSpread > 0) && (spread !== drawnSpread || (crackRedrawn && spread > 0))) {
       redrawSpread(spread);
     }
 
@@ -1522,8 +1481,7 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
       canvas.removeEventListener('pointerleave', onPointerLeave);
       disposeObject(scene);
       jarGeometry.current.dispose();
-      crackMask.texture.dispose();
-      spreadMask.texture.dispose();
+      masks.dispose();
       mascotTexture.dispose();
       environment.dispose();
       pmrem.dispose();

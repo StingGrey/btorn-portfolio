@@ -6,7 +6,8 @@
 // 所以看起来是「咔、咔」地裂开，而不是跟着滚轮一点点画出来。往回滑时按 3 倍速收回去。
 //
 // 坐标：原点在屏幕底边正中，y 朝上，单位是 base（≈ 屏幕高度，不随进度缩放）。
-// 画到一张 2D 画布上：R = 裂缝芯（真实宽度的细线，张开时变宽、边缘参差），
+// 这里只管裂纹的形状和每一下怎么崩；画成遮罩在 crackMasks.ts 里（GPU 上画）：
+// R = 裂缝芯（真实宽度的细线，张开时变宽、边缘参差），
 // G = 裂缝周围的故障范围（刚崩出来的那一下更强），B = 碎块的错位量（被裂纹围住的碎块“啪”地错开一点）。
 
 type Point = [number, number];
@@ -45,9 +46,9 @@ const EASE = 1.8;
 /** 刚崩出来的裂纹周围多“热”一会儿（毫秒） */
 const FRESH_MS = 420;
 /** 前沿和末端收成针尖的长度（base 单位） */
-const TIP = 0.022;
+export const TIP = 0.022;
 /** 碎块错开用多久（毫秒）：很短，是“啪”地一下 */
-const SHARD_POP_MS = 40;
+export const SHARD_POP_MS = 40;
 /** 往回滑时收回去的倍速 */
 const RETRACT = 3;
 
@@ -595,199 +596,4 @@ export function stepCracks(model: CrackModel, state: CrackState, crack: number, 
     });
   }
   return { changed, snap };
-}
-
-// 画的时候用的临时数组（屏幕坐标、弧长、原始点序号），避免每帧分配
-const SX = new Float64Array(1024);
-const SY = new Float64Array(1024);
-const SS = new Float64Array(1024);
-const SI = new Int32Array(1024);
-
-/** 把一条裂纹从起点到前沿 s 的点换成屏幕坐标放进临时数组，返回点数 */
-function collect(path: CrackPath, s: number, toX: (x: number) => number, toY: (y: number) => number) {
-  const { points, cum } = path;
-  let m = 0;
-  for (let index = 0; index < points.length && m < SX.length; index += 1) {
-    if (index === 0 || cum[index] < s) {
-      SX[m] = toX(points[index][0]);
-      SY[m] = toY(points[index][1]);
-      SS[m] = cum[index];
-      SI[m] = index;
-      m += 1;
-      continue;
-    }
-    const a = points[index - 1];
-    const b = points[index];
-    const k = clamp01((s - cum[index - 1]) / (cum[index] - cum[index - 1] || 1e-6));
-    SX[m] = toX(a[0] + (b[0] - a[0]) * k);
-    SY[m] = toY(a[1] + (b[1] - a[1]) * k);
-    SS[m] = s;
-    SI[m] = index;
-    m += 1;
-    break;
-  }
-  return m;
-}
-
-function trace(ctx: CanvasRenderingContext2D, m: number, stride: number) {
-  ctx.moveTo(SX[0], SY[0]);
-  for (let k = stride; k < m - 1; k += stride) ctx.lineTo(SX[k], SY[k]);
-  ctx.lineTo(SX[m - 1], SY[m - 1]);
-}
-
-/** 裂缝芯画成一条填充的细带：宽度沿途收窄，前沿 / 末端收成针尖，张开时两边各自参差 */
-function ribbon(ctx: CanvasRenderingContext2D, path: CrackPath, s: number, m: number, px: number, open: number) {
-  const tip = Math.min(TIP, path.length * 0.6);
-  const baseW = path.width * px;
-  const openW = path.open * open * px;
-  ctx.beginPath();
-  for (let side = 0; side < 2; side += 1) {
-    const sign = side === 0 ? 1 : -1;
-    for (let k = 0; k < m; k += 1) {
-      const i = side === 0 ? k : m - 1 - k;
-      const prev = Math.max(0, i - 1);
-      const next = Math.min(m - 1, i + 1);
-      let tx = SX[next] - SX[prev];
-      let ty = SY[next] - SY[prev];
-      const len = Math.hypot(tx, ty) || 1;
-      tx /= len;
-      ty /= len;
-      const along = SS[i] / path.length;
-      const needle = Math.min(1, (s - SS[i]) / tip);
-      const hw = (baseW * (1 - path.taper * along) + openW * (1 - 0.55 * along) * path.jag[SI[i] * 2 + side]) * needle;
-      const x = SX[i] - ty * hw * sign;
-      const y = SY[i] + tx * hw * sign;
-      if (side === 0 && k === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-  }
-  ctx.closePath();
-  ctx.fill();
-}
-
-const ZONE_LAYERS: [number, number][] = [
-  [0.12, 30],
-  [0.065, 46],
-  [0.03, 70],
-];
-
-/** 把裂纹画到画布上。crack：滚动进度（故障范围跟着变宽）；open：裂缝张开的程度 0..1 */
-export function drawCracks(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  model: CrackModel,
-  state: CrackState,
-  crack: number,
-  open: number,
-) {
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, width, height);
-  if (!state.ages.some((age) => age > 0)) return;
-
-  const base = Math.min(height, width * 1.15);
-  // 线宽按 CSS 像素给，屏幕大一点稍微粗一点
-  const px = Math.min(Math.max(base / 900, 0.8), 1.6);
-  const toX = (x: number) => width / 2 + x * base;
-  const toY = (y: number) => height - y * base;
-
-  // ① 碎块错位：B 通道（后画的小碎块盖住大碎块）
-  model.shards.forEach((shard) => {
-    const t = state.ages[shard.event] - shard.delay;
-    if (t <= 0) return;
-    ctx.globalAlpha = clamp01(t / SHARD_POP_MS);
-    ctx.fillStyle = `rgb(0, 0, ${Math.round(255 * shard.b)})`;
-    ctx.beginPath();
-    shard.polygon.forEach(([x, y], index) => {
-      if (index === 0) ctx.moveTo(toX(x), toY(y));
-      else ctx.lineTo(toX(x), toY(y));
-    });
-    ctx.closePath();
-    ctx.fill();
-  });
-  ctx.globalAlpha = 1;
-
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  // ② 故障范围：G 通道，三层宽笔画叠出柔和的衰减；刚崩出来的再叠一层，那一下周围特别乱
-  const grow = 0.35 + 1.1 * crack;
-  ZONE_LAYERS.forEach(([size, value]) => {
-    ctx.strokeStyle = `rgb(0, ${value}, 0)`;
-    model.paths.forEach((path, index) => {
-      const s = state.front[index];
-      if (path.zone <= 0 || s <= 0) return;
-      const m = collect(path, s, toX, toY);
-      if (m < 2) return;
-      ctx.lineWidth = Math.max(2, base * size * path.zone * grow * 0.5);
-      ctx.beginPath();
-      trace(ctx, m, 1);
-      ctx.stroke();
-    });
-  });
-  model.paths.forEach((path, index) => {
-    const s = state.front[index];
-    const fresh = state.fresh[index];
-    if (path.zone <= 0 || s <= 0 || fresh <= 0.01) return;
-    const m = collect(path, s, toX, toY);
-    if (m < 2) return;
-    ctx.strokeStyle = `rgb(0, ${Math.round(130 * fresh)}, 0)`;
-    ctx.lineWidth = Math.max(3, base * 0.03 * Math.max(path.zone, 0.4));
-    ctx.beginPath();
-    trace(ctx, m, 1);
-    ctx.stroke();
-  });
-
-  // ③ 裂缝芯：R 通道
-  ctx.fillStyle = 'rgb(255, 0, 0)';
-  model.paths.forEach((path, index) => {
-    const s = state.front[index];
-    if (s <= 0) return;
-    const m = collect(path, s, toX, toY);
-    if (m >= 2) ribbon(ctx, path, s, m, px, open);
-  });
-}
-
-/**
- * 像素扩散遮罩：把已经崩出来的主要裂纹一圈圈“膨胀”出去。
- * 一层层越来越窄的笔画叠加，所以越靠近裂缝（越早被吞掉）数值越大，着色器用它决定像素块的大小。
- */
-export function drawSpread(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  model: CrackModel,
-  state: CrackState,
-  spread: number,
-) {
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, width, height);
-  if (spread <= 0.001) return;
-
-  const base = Math.min(height, width * 1.15);
-  const toX = (x: number) => width / 2 + x * base;
-  const toY = (y: number) => height - y * base;
-  const radius = spread * Math.hypot(width, height) * 0.62;
-  const layers = 5;
-
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.strokeStyle = `rgb(${Math.floor(255 / layers)}, 0, 0)`;
-  for (let layer = 0; layer < layers; layer += 1) {
-    ctx.lineWidth = 2 + 2 * radius * (1 - layer / layers);
-    // 同一层的所有裂纹合成一笔：遮罩本来就是糊的，点也抽稀一半
-    ctx.beginPath();
-    model.paths.forEach((path, index) => {
-      const s = state.front[index];
-      if (path.zone < 0.5 || s <= 0) return;
-      const m = collect(path, s, toX, toY);
-      if (m >= 2) trace(ctx, m, 2);
-    });
-    ctx.stroke();
-  }
 }
