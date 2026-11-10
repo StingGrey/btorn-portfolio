@@ -1,33 +1,51 @@
 # Product
 
-## Register
+<!-- impeccable:product-schema 1 -->
 
-brand
+## Platform
+
+web
 
 ## Users
 
-公开访问个人作品站的访客，以及在本机维护页面内容的站点作者。访客主要浏览作品、氛围画面与个人表达；作者需要在不理解复杂 React 组件结构的情况下，直观修改页面文字和区块。
+Visitors to BTORN's personal site: people who like anime illustration and playful web motion, usually arriving from a shared link or GitHub, on desktop or phone. They come to look around and play, not to finish a task. The site author (BTORN) maintains it locally.
 
 ## Product Purpose
 
-这是一个以视觉叙事和互动体验为核心的个人作品站。它通过梦幻、亲密、带有手作感的页面体验展示作品与个性。成功的体验应让访客愿意探索页面，同时让作者可以在本机安全、快速地维护内容，而不破坏现有动画和视觉效果。
+A personal showcase whose main content is the animation effects themselves. Illustrations are supporting material. Success means the visitor stays to poke at the effects and leaves describing the site as cute.
 
-## Brand Personality
+## Positioning
 
-梦幻、甜美、亲密。文案像一本会呼吸的私人收藏册，语气柔软、有生活感，但不幼稚，也不呈现商业化模板气质。
+A motion playground with a cute anime soul, not a portfolio grid. Every section exists to show off an effect; the illustrations and mascot give those effects a character to belong to.
 
-## Anti-references
+## Capabilities and Constraints
 
-避免通用 SaaS 后台感、千篇一律的卡片网格、企业官网式陈词、过度玻璃拟态，以及会压过作品内容的编辑器视觉。不要为了方便编辑而把现有页面改造成无代码建站模板。
+- Vite + React 19 + TypeScript, deployed to GitHub Pages under the base path `/btorn-portfolio/`.
+- Kept building blocks: `Logo` (BTORN text logo), `DreamConsole` (the 梦境分类 CRT console with 4 categories), five text effects in `src/components/text-effects.tsx`.
+- Copy is Chinese, with English labels used as decoration (e.g. CANDY HEART).
+- Undecided: which homepage direction becomes the real site (three are being designed for comparison).
 
-## Design Principles
+## Brand Commitments
 
-1. 作品体验优先，编辑功能应作为本地工具层存在，普通访客完全感知不到。
-2. 保留动效与空间叙事，内容维护不应要求作者理解动画实现。
-3. 点击即编辑，编辑对象与页面中的真实位置保持清晰对应。
-4. 修改必须可撤销、可重置、可持久化，避免误操作造成不可恢复的结果。
-5. 控制层保持克制清楚，与梦幻页面形成层级区分，但仍保留品牌温度。
+- Name: BTORN. Text logo with the O in hot pink `#ff5f8f`.
+- Mascot: the pink-haired angel cutout `public/assets/character-orbit-cutout.png`.
+- The 梦境分类 console and its copy (CANDY HEART / DREAMY FRAMES / TINY EVENT / TREASURE BOX).
+- Voice: soft, sweet, intimate and lived-in, like a private collection book that breathes; never childish, never corporate.
+
+## Evidence on Hand
+
+- Mascot cutout: `public/assets/character-orbit-cutout.png` (1148×1800, transparent).
+- Console illustrations: `public/assets/gallery-pink-arrow.webp`, `character-tech.webp`, `gallery-team.webp`, `gallery-night.webp`.
+- The illustrations are a mix of BTORN's own work and collected work, and which is which is not recorded yet. No page may label a specific image as BTORN's own work, and no artist credits exist to show.
+- No social links, bio facts or project list are confirmed for the new site.
+
+## Product Principles
+
+1. Motion is the content: every section earns its place by showing an effect worth touching.
+2. Cute, not childish: sweetness comes from character and detail, not from clip-art.
+3. Illustrations are shown with care and never claimed beyond what is confirmed.
+4. Effects stay smooth on a phone and respect reduced-motion settings.
 
 ## Accessibility & Inclusion
 
-编辑器支持键盘焦点、明确标签和足够的文字对比度。尊重系统的减少动画设置；编辑状态和操作结果不能只依赖颜色表达。
+Honor `prefers-reduced-motion` (content stays visible and readable with motion off). Text effects keep a readable copy for screen readers.

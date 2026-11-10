@@ -1,0 +1,607 @@
+/* 从电视里冒出来的故障弹窗。外观接着「梦境分类」控制台里那个弹窗：浅薰衣草底、细边、等宽标题；
+   多了一圈红青错位的描边，弹出来和收回去都是一拍一拍跳的。 */
+
+.gl-layer-popups {
+  --gw-ink: #4a3878;
+  --gw-ink-soft: #6d5d93;
+  --gw-paper: #f8f5fd;
+  --gw-progress: 0;
+  --gw-pct: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 崩溃前的最后一段：整层跟着一拍一拍地乱跳，越来越凶 */
+.gl-layer-popups[data-crash="soft"][data-motion="full"] {
+  animation: gw-crash 620ms steps(1, end) infinite;
+}
+
+.gl-layer-popups[data-crash="hard"][data-motion="full"] {
+  animation: gw-crash-hard 300ms steps(1, end) infinite;
+}
+
+@keyframes gw-crash {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translate(-6px, 2px);
+  }
+  40% {
+    transform: translate(5px, -3px) skewX(-1deg);
+  }
+  60% {
+    transform: none;
+  }
+  80% {
+    transform: translate(-3px, 0);
+  }
+}
+
+@keyframes gw-crash-hard {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translate(-16px, 6px) skewX(-3deg);
+  }
+  50% {
+    transform: translate(12px, -9px) scaleY(1.02);
+  }
+  75% {
+    transform: translate(-8px, 3px) skewX(2deg);
+  }
+}
+
+/* ---------- 一个窗口 ---------- */
+
+.gw {
+  --w: min(var(--w0), calc(100vw - 24px));
+  position: absolute;
+  left: max(8px, min(calc(var(--x) * 100% + var(--dx, 0px)), calc(100% - var(--w) - 8px)));
+  top: max(8px, min(calc(var(--y) * 100% + var(--dy, 0px)), calc(100% - var(--h) - 8px)));
+  width: var(--w);
+  pointer-events: auto;
+  font-family: "Fredoka", ui-rounded, system-ui, sans-serif;
+  color: var(--gw-ink);
+}
+
+/* 满屏乱飞的那些不夹在视口里：可以半截出界 */
+.gw[data-free="true"] {
+  left: calc(var(--x) * 100%);
+  top: calc(var(--y) * 100%);
+}
+
+.gw[data-twitch="true"] {
+  animation: gw-twitch 280ms steps(1, end);
+}
+
+.gw-frame {
+  overflow: hidden;
+  border: 1.5px solid var(--gw-ink);
+  border-radius: 7px;
+  background: var(--gw-paper);
+  box-shadow:
+    -3px 0 0 rgb(255 30 79 / 0.42),
+    3px 0 0 rgb(0 214 255 / 0.42),
+    0 18px 30px -14px rgb(60 30 90 / 0.45),
+    0 2px 6px rgb(60 30 90 / 0.12);
+}
+
+.gw[data-state="open"] .gw-frame {
+  animation: gw-in 560ms steps(1, end) both;
+}
+
+.gw[data-state="closing"] .gw-frame {
+  animation: gw-out 320ms steps(1, end) both;
+  pointer-events: none;
+}
+
+/* 往回滑：倒着播弹出来的那一段，一跳一跳缩回电视屏幕里 */
+.gw[data-state="retract"] .gw-frame {
+  animation: gw-retract 380ms steps(1, end) both;
+  pointer-events: none;
+}
+
+@keyframes gw-retract {
+  0% {
+    transform: none;
+  }
+  20% {
+    transform: translate(6px, 0) scale(0.98);
+    clip-path: inset(0 0 14% 0);
+    filter: drop-shadow(-2px 0 #ff1e4f) drop-shadow(2px 0 #00e0ff);
+  }
+  40% {
+    transform: translate(calc(var(--fx, 0px) * 0.28 + 12px), calc(var(--fy, 0px) * 0.28)) scale(0.78);
+    clip-path: inset(0 0 52% 0);
+    filter: drop-shadow(-4px 0 #ff1e4f) drop-shadow(4px 0 #00e0ff);
+  }
+  65% {
+    transform: translate(calc(var(--fx, 0px) * 0.62), calc(var(--fy, 0px) * 0.62)) scale(0.38);
+    clip-path: inset(30% 0 40% 0);
+  }
+  85% {
+    opacity: 1;
+    transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(0.12);
+    clip-path: inset(46% 0 46% 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(0.1);
+  }
+}
+
+.gl-layer-popups[data-motion="reduced"] .gw-frame {
+  animation-duration: 1ms !important;
+}
+
+/* 从电视屏幕中心（--fx / --fy）一跳一跳地蹦出来，边跳边撕成几条、红青错开 */
+@keyframes gw-in {
+  0% {
+    opacity: 0;
+    transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(0.1);
+    clip-path: inset(46% 0 46% 0);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(calc(var(--fx, 0px) * 0.62), calc(var(--fy, 0px) * 0.62)) scale(0.38);
+    clip-path: inset(30% 0 40% 0);
+    filter: drop-shadow(-6px 0 #ff1e4f) drop-shadow(6px 0 #00e0ff);
+  }
+  22% {
+    transform: translate(calc(var(--fx, 0px) * 0.28 + 12px), calc(var(--fy, 0px) * 0.28)) scale(0.78);
+    clip-path: inset(0 0 52% 0);
+    filter: drop-shadow(-4px 0 #ff1e4f) drop-shadow(4px 0 #00e0ff);
+  }
+  34% {
+    transform: translate(-9px, 0) scale(1.05);
+    clip-path: inset(38% 0 0 0);
+  }
+  46% {
+    transform: translate(6px, 0) scale(0.98);
+    clip-path: inset(0 0 14% 0);
+    filter: drop-shadow(-2px 0 #ff1e4f) drop-shadow(2px 0 #00e0ff);
+  }
+  60% {
+    transform: translate(-2px, 0);
+    clip-path: inset(0);
+    filter: none;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    clip-path: inset(0);
+    filter: none;
+  }
+}
+
+@keyframes gw-out {
+  0% {
+    transform: none;
+  }
+  25% {
+    transform: translate(10px, 0) scaleY(0.6);
+    clip-path: inset(20% 0 30% 0);
+    filter: drop-shadow(-5px 0 #ff1e4f) drop-shadow(5px 0 #00e0ff);
+  }
+  55% {
+    transform: translate(-14px, 0) scale(1.08, 0.08);
+  }
+  80% {
+    opacity: 0.8;
+    transform: scale(0.2, 0.02);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0, 0);
+  }
+}
+
+@keyframes gw-twitch {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translate(-7px, 0);
+    filter: drop-shadow(-3px 0 #ff1e4f) drop-shadow(3px 0 #00e0ff);
+  }
+  45% {
+    transform: translate(5px, 1px);
+  }
+  70% {
+    transform: translate(-2px, 0);
+    filter: none;
+  }
+}
+
+/* ---------- 标题栏 ---------- */
+
+.gw-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 4px 0 10px;
+  border-bottom: 1.5px solid var(--gw-ink);
+  background: var(--bar, linear-gradient(90deg, #ffd3e5, #e4dbff));
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.gw[data-dragging="true"] .gw-titlebar {
+  cursor: grabbing;
+}
+
+.gw[data-kind="channel"] .gw-titlebar {
+  background: linear-gradient(90deg, #cfe8ff, #ffd6e8);
+}
+
+.gw[data-kind="log"] .gw-titlebar,
+.gw[data-kind="copying"] .gw-titlebar {
+  background: linear-gradient(90deg, #d2f6e4, #e4dbff);
+}
+
+.gw-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font: 400 19px/1 "VT323", ui-monospace, monospace;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gl-layer-popups .gw-close {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1.5px solid var(--gw-ink);
+  border-radius: 5px;
+  background: #fff;
+  color: var(--gw-ink);
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.gl-layer-popups .gw-close:hover {
+  background: #ffd3e5;
+}
+
+.gl-layer-popups button:focus-visible {
+  outline: 2.5px solid #ff5f8f;
+  outline-offset: 2px;
+}
+
+/* ---------- 内容 ---------- */
+
+.gw-body {
+  padding: 12px 14px 14px;
+}
+
+.gl-layer-popups .gw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gw-ink);
+  color: #fff;
+  font: 500 14px/1 "Fredoka", ui-rounded, system-ui, sans-serif;
+  cursor: pointer;
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 180ms ease;
+}
+
+.gl-layer-popups .gw-btn:hover {
+  transform: translateY(-1px);
+  background: #5d4893;
+}
+
+.gl-layer-popups .gw-btn:active {
+  transform: translateY(1px);
+}
+
+.gl-layer-popups .gw-btn-soft {
+  background: #fff;
+  color: var(--gw-ink);
+  box-shadow: inset 0 0 0 1.5px var(--gw-ink);
+}
+
+.gl-layer-popups .gw-btn-soft:hover {
+  background: #fff4f9;
+}
+
+.gl-layer-popups .gw-btn-small {
+  min-height: 28px;
+  padding: 0 18px;
+  font-size: 13px;
+}
+
+.gl-layer-popups .gw-btn[data-live="true"] {
+  background: #fff;
+  color: #d63c74;
+  box-shadow: inset 0 0 0 1.5px #ff8fbd;
+  cursor: default;
+  transform: none;
+}
+
+.gw-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff5f8f;
+  box-shadow: 0 0 0 3px rgb(255 95 143 / 0.25);
+}
+
+.gw-log {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: #1a1430;
+  color: #9dffcf;
+  font: 400 18px/1.15 "VT323", ui-monospace, monospace;
+  white-space: pre-wrap;
+}
+
+.gw-log.gw-light {
+  background: #fff;
+  color: var(--gw-ink);
+  box-shadow: inset 0 0 0 1px #ddd3ee;
+}
+
+.gw-caret {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.9em;
+  margin-left: 2px;
+  vertical-align: -0.1em;
+  background: currentColor;
+}
+
+.gw-channel h3 {
+  margin: 10px 0 2px;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.gw-channel p {
+  display: -webkit-box;
+  margin: 0 0 12px;
+  overflow: hidden;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--gw-ink-soft);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.gw-thumb {
+  position: relative;
+  overflow: hidden;
+  height: 118px;
+  border-radius: 4px;
+  background: #1a1430;
+}
+
+/* 四个频道窗口各是一种测试图案（不放插画）：彩条、横条、棋盘、同心圆 */
+.gw-pattern[data-channel="0"] {
+  background:
+    linear-gradient(
+        90deg,
+        #3a2f58 0 14.28%,
+        #f4eefc 14.28% 28.57%,
+        #6d5d93 28.57% 42.85%,
+        #1a1430 42.85% 57.14%,
+        #ff9cc2 57.14% 71.42%,
+        #1a1430 71.42% 85.71%,
+        #9fb8ff 85.71%
+      )
+      0 100% / 100% 22% no-repeat,
+    linear-gradient(
+      90deg,
+      #f4eefc 0 14.28%,
+      #ffe27a 14.28% 28.57%,
+      #8fe3e0 28.57% 42.85%,
+      #8fe3bf 42.85% 57.14%,
+      #ff9cc2 57.14% 71.42%,
+      #ff7aa5 71.42% 85.71%,
+      #9fb8ff 85.71%
+    );
+}
+
+.gw-pattern[data-channel="1"] {
+  background:
+    linear-gradient(90deg, #1a1430, #f4eefc) 0 100% / 100% 24% no-repeat,
+    repeating-linear-gradient(180deg, #cfe8ff 0 12px, #9fd2ff 12px 24px, #e4dbff 24px 36px, #b9a3ff 36px 48px);
+}
+
+.gw-pattern[data-channel="2"] {
+  background: repeating-conic-gradient(#8fe3bf 0 25%, #f4fff9 0 50%) 0 0 / 22px 22px;
+}
+
+.gw-pattern[data-channel="3"] {
+  background:
+    radial-gradient(circle at 50% 48%, transparent 0 10px, transparent 0),
+    repeating-radial-gradient(circle at 50% 48%, #ffe27a 0 8px, #fff6d4 8px 16px, #ffc1d4 16px 24px, #fff1f7 24px 32px);
+}
+
+.gw-osd-name {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  translate: -50% -50%;
+  padding: 2px 8px;
+  white-space: nowrap;
+  font: 400 22px/1 "VT323", ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: rgb(26 20 48 / 0.78);
+}
+
+/* 缩略图上也压一层细扫描线，和电视里的画面是一路的 */
+.gw-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.14) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+}
+
+.gw-ch {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  z-index: 1;
+  font: 400 20px/1 "VT323", ui-monospace, monospace;
+  color: #86ffb4;
+  text-shadow:
+    0 0 8px rgb(60 255 150 / 0.6),
+    2px 2px 0 rgb(8 18 12 / 0.7);
+}
+
+.gw-noise {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 118px;
+  border-radius: 4px;
+  background:
+    var(--gl-grain) 0 0 / 120px 120px,
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.08) 0 1px, transparent 1px 3px),
+    #3a3448;
+}
+
+.gw-noise span {
+  padding: 2px 10px;
+  font: 400 26px/1 "VT323", ui-monospace, monospace;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: rgb(26 20 48 / 0.72);
+}
+
+.gw-copying p {
+  margin: 0 0 10px;
+  font-size: 14.5px;
+}
+
+.gw-copying .gw-small {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--gw-ink-soft);
+}
+
+.gw-bar-track {
+  height: 16px;
+  padding: 2px;
+  border: 1.5px solid var(--gw-ink);
+  border-radius: 3px;
+  background: #fff;
+}
+
+/* 一格一格的进度块，长度跟着滚动走 */
+.gw-bar-track i {
+  display: block;
+  width: calc(var(--gw-progress) * 100%);
+  height: 100%;
+  background: repeating-linear-gradient(90deg, #ff8fbd 0 10px, transparent 10px 13px);
+}
+
+@property --gw-pct {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.gw-pct {
+  counter-reset: gw-pct var(--gw-pct);
+}
+
+.gw-pct::after {
+  content: counter(gw-pct) "%";
+  font-variant-numeric: tabular-nums;
+}
+
+.gw-message {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  align-items: start;
+}
+
+.gw-message p {
+  margin: 2px 0 0;
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+
+.gw-icon {
+  color: var(--gw-ink);
+}
+
+.gw-icon.gw-err {
+  color: #ef3f74;
+}
+
+.gw-icon.gw-warn {
+  color: #e2a20b;
+}
+
+.gw-icon.gw-ask {
+  color: #5b8fe8;
+}
+
+.gw[data-kind="mini"] .gw-body {
+  padding: 10px 12px 12px;
+}
+
+.gw-hex {
+  font-size: 16px;
+  line-height: 1.2;
+  color: #c9bde6;
+}
+
+.gw-hex b {
+  font-weight: 400;
+  color: #1a1430;
+  background: #ff8fbd;
+}
+
+.gw-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+@media (max-width: 560px) {
+  .gw-body {
+    padding: 10px 12px 12px;
+  }
+
+  .gw-thumb {
+    height: 92px;
+  }
+
+  .gw-channel p {
+    -webkit-line-clamp: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gw[data-twitch="true"] {
+    animation: none;
+  }
+}

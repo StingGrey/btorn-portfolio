@@ -1,0 +1,1082 @@
+/* 方案 D：物理毛玻璃。白底为主、浅粉为辅，点缀天蓝、薄荷和柠檬黄；往下滑玻璃会像素化、崩坏、裂开。 */
+
+@property --gx {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 28%;
+}
+
+@property --gy {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+html[data-variant="glass"] {
+  background: #fffafd;
+  scrollbar-color: oklch(82% 0.08 350) #fffafd;
+}
+
+.gl-root {
+  --gl-white: #fffafd;
+  --gl-blush: #fff4f9;
+  --gl-pink: oklch(91% 0.055 350);
+  --gl-pink-deep: oklch(66% 0.19 357);
+  --gl-sky: oklch(90% 0.06 235);
+  --gl-blue: oklch(64% 0.13 245);
+  --gl-mint: oklch(92% 0.06 165);
+  --gl-green: oklch(64% 0.12 160);
+  --gl-lemon: oklch(96% 0.07 100);
+  --gl-ink: oklch(32% 0.07 300);
+  --gl-ink-soft: oklch(47% 0.06 300);
+  --gl-font: "Fredoka", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  --gl-mono: "VT323", ui-monospace, monospace;
+  --gl-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 -.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  color: var(--gl-ink);
+  background: var(--gl-white);
+  font-family: var(--gl-font);
+}
+
+.gl-root ::selection {
+  color: var(--gl-ink);
+  background: var(--gl-pink);
+}
+
+.gl-root :focus-visible {
+  outline: 3px solid var(--gl-pink-deep);
+  outline-offset: 3px;
+}
+
+.gl-root button {
+  font: inherit;
+  color: inherit;
+}
+
+.gl-root h1,
+.gl-root h2,
+.gl-root h3 {
+  text-wrap: balance;
+}
+
+.gl-root p {
+  text-wrap: pretty;
+}
+
+/* ---------- 物理毛玻璃（DOM） ---------- */
+
+.glass {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--glass-r, 24px);
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.46), rgb(255 255 255 / 0.16));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 14px)) saturate(1.7);
+  backdrop-filter: blur(var(--glass-blur, 14px)) saturate(1.7);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 0 -1px 0 rgb(255 255 255 / 0.32),
+    inset 0 0 26px rgb(255 255 255 / 0.22),
+    0 24px 46px -20px oklch(42% 0.1 330 / 0.3),
+    0 4px 12px -3px oklch(42% 0.1 330 / 0.12);
+  transition:
+    --gx 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    --gy 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glass::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  padding: 1.2px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.98),
+    rgb(255 255 255 / 0.2) 34%,
+    oklch(88% 0.07 350 / 0.5) 58%,
+    rgb(255 255 255 / 0.85)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+
+.glass::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(220px circle at var(--gx) var(--gy), rgb(255 255 255 / 0.6), transparent 62%),
+    var(--gl-grain);
+  background-size: auto, 160px 160px;
+  mix-blend-mode: soft-light;
+}
+
+.glass > :not(.glass-defs) {
+  position: relative;
+  z-index: 1;
+}
+
+.glass-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* ---------- 导航 ---------- */
+
+.gl-nav {
+  position: fixed;
+  z-index: 60;
+  top: 16px;
+  left: 16px;
+  padding: 5px;
+  transition:
+    opacity 320ms ease,
+    translate 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s,
+    --gx 700ms ease,
+    --gy 700ms ease;
+}
+
+/* 控制台铺满全屏、电视画面还没缩小的那一段把导航收起来，别压住 DREAM INDEX */
+.gl-root[data-nav="off"] .gl-nav {
+  opacity: 0;
+  translate: 0 -18px;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 260ms ease,
+    translate 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 360ms;
+}
+
+/* 自动隐藏：只是挪出去、变透明，键盘 Tab 进来时（:focus-within）照样露出来 */
+.gl-root[data-nav="away"] .gl-nav:not(:focus-within) {
+  opacity: 0;
+  translate: 0 -76px;
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    translate 380ms cubic-bezier(0.55, 0, 0.75, 0.2);
+}
+
+/* 重启以后是 ASCII 的世界：导航也换成终端的样子 */
+.gl-root[data-world="ascii"] .gl-nav {
+  background: rgb(7 6 11 / 0.86);
+  box-shadow: inset 0 0 0 1px #3a3350;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none !important;
+}
+
+.gl-root[data-world="ascii"] .gl-nav::before,
+.gl-root[data-world="ascii"] .gl-nav::after {
+  display: none;
+}
+
+.gl-root[data-world="ascii"] .gl-nav a {
+  border-radius: 4px;
+  font-family: var(--gl-mono);
+  font-size: 1.25rem;
+  color: #e9e2f5;
+}
+
+.gl-root[data-world="ascii"] .gl-nav a:hover {
+  color: #07060b;
+  background: #8fffc4;
+  transform: none;
+}
+
+.gl-root[data-world="ascii"] .gl-nav .brand span {
+  color: #ff5f8f;
+}
+
+.gl-nav nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.gl-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--gl-ink);
+  transition: background 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gl-nav a:hover {
+  background: rgb(255 255 255 / 0.6);
+  transform: translateY(-1px);
+}
+
+.gl-nav .brand {
+  padding: 0 14px 0 12px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: 0.01em;
+}
+
+.gl-nav .brand span {
+  color: var(--gl-pink-deep);
+}
+
+/* ---------- 整段滚动序列：首屏 → 控制台 → 电视 ---------- */
+
+.gl-seq {
+  position: relative;
+  /* 高度在 GlassHome 里按 TRAVEL 写在行内 */
+  height: 2080svh;
+}
+
+.gl-anchor {
+  position: absolute;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.gl-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--gl-white);
+}
+
+.gl-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* 蓝屏、重启、开机这几屏整屏盖着：下面的层一律不画，舞台底色和这一屏一样 */
+.gl-stage:is([data-screen="bsod"], [data-screen="restart"]) {
+  background: #1468d8;
+}
+
+.gl-stage:is([data-screen="black"], [data-screen="boot"]) {
+  background: #07060b;
+}
+
+.gl-stage:not([data-screen="off"]):is([data-screen]) > :is(.gl-layer:not(.gl-crash), .gl-hint, .gl-remote) {
+  visibility: hidden;
+}
+
+.gl-canvas-host {
+  position: absolute;
+  inset: 0;
+}
+
+.gl-canvas-host > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+}
+
+.gl-canvas-host > canvas,
+.gl-canvas-host > .tv-root {
+  opacity: 0;
+  transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gl-canvas-host[data-status="ready"] > canvas,
+.gl-canvas-host[data-status="ready"] > .tv-root {
+  opacity: 1;
+}
+
+/* 电视垫在最下面，控制台淡出后才露出来 */
+.gl-layer-tv {
+  z-index: 1;
+  visibility: hidden;
+  background: var(--gl-blush);
+  pointer-events: none;
+}
+
+.gl-layer-tv[data-visible="true"] {
+  visibility: visible;
+}
+
+.gl-layer-tv[data-interactive="true"] {
+  pointer-events: auto;
+}
+
+.gl-tv-fallback {
+  position: absolute;
+  inset: 14% 16%;
+  width: 68%;
+  height: 72%;
+  object-fit: cover;
+  border-radius: 24px;
+}
+
+/* 控制台在中间：首屏的裂缝和碎落直接透出它。
+   不在台上时只是完全透明（不用 visibility: hidden）：浏览器会提前把它画好、栅格化好，
+   真正露出来的那一下就不会卡 */
+.gl-layer-console {
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+  transition: opacity 360ms ease;
+}
+
+.gl-layer-console[data-visible="true"] {
+  /* --gl-dissolve：和电视交接的那一小段，透明度直接跟着滚动位置走 */
+  opacity: calc(1 - var(--gl-dissolve, 0));
+  pointer-events: auto;
+}
+
+/* 交接时不要那段固定时长的淡入淡出，只留很短的一点平滑，免得滚轮一格一格地跳 */
+.gl-layer-console[data-handoff="true"] {
+  transition: opacity 90ms linear;
+}
+
+/* 刚挂上去的时候露一丝丝（肉眼看不见），逼浏览器把它真的栅格化一遍 */
+.gl-layer-console[data-warming="true"] {
+  opacity: 0.01;
+  transition: none;
+}
+
+/* 控制台的 CRT 噪点：原来是 3px 的渐变小圆点、还铺了 1.4 倍大，栅格化很重；方案 D 里换成一块小噪点图平铺 */
+.gl-layer-console .works-crt-noise {
+  inset: -6%;
+  opacity: 0.18;
+  background-image: var(--gl-grain);
+  background-size: 160px 160px;
+}
+
+/* 控制台还垫在玻璃后面（只从裂缝里露一点）、或者已经退场时，先把它自己的循环动画停住，省重绘和合成；
+   图片的入场动画是一次性的，照常播完，裂缝里才看得见画面 */
+.gl-stage[data-phase="hero"] .gl-layer-console :not(.works-media-in, .works-media-out),
+.gl-stage[data-phase="hero"] .gl-layer-console :not(.works-media-in, .works-media-out)::before,
+.gl-stage[data-phase="hero"] .gl-layer-console :not(.works-media-in, .works-media-out)::after,
+.gl-layer-console:not([data-visible="true"]) :not(.works-media-in, .works-media-out),
+.gl-layer-console:not([data-visible="true"]) :not(.works-media-in, .works-media-out)::before,
+.gl-layer-console:not([data-visible="true"]) :not(.works-media-in, .works-media-out)::after {
+  animation-play-state: paused !important;
+}
+
+/* 首屏画布在最上面，碎掉的地方是透明的 */
+.gl-layer-hero {
+  z-index: 3;
+  pointer-events: none;
+}
+
+.gl-layer-hero[data-interactive="true"] {
+  pointer-events: auto;
+}
+
+.gl-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  background:
+    radial-gradient(40% 40% at 20% 30%, var(--gl-pink), transparent 70%),
+    radial-gradient(36% 36% at 80% 25%, var(--gl-sky), transparent 70%),
+    radial-gradient(34% 34% at 30% 85%, var(--gl-mint), transparent 70%),
+    var(--gl-white);
+  transition: opacity 500ms ease;
+}
+
+.gl-stage:not([data-phase="hero"]) .gl-fallback {
+  opacity: 0;
+}
+
+.gl-fallback img {
+  position: absolute;
+  right: 1.5vw;
+  bottom: 0;
+  height: min(86svh, 150vw);
+  width: auto;
+}
+
+.gl-fallback > p {
+  position: relative;
+}
+
+.gl-fallback-logo {
+  margin: 0;
+  font-weight: 600;
+  font-size: clamp(3rem, 9vw, 6rem);
+  line-height: 1;
+}
+
+.gl-fallback-logo span {
+  color: var(--gl-pink-deep);
+}
+
+/* 提示条在右上角，和左上角的导航错开 */
+.gl-hint {
+  position: absolute;
+  z-index: 5;
+  top: 18px;
+  right: 18px;
+  padding: 11px 20px;
+  transition:
+    opacity 500ms ease,
+    translate 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    --gx 700ms ease,
+    --gy 700ms ease;
+}
+
+@starting-style {
+  .gl-hint {
+    opacity: 0;
+    translate: 0 -14px;
+  }
+}
+
+.gl-hint p {
+  margin: 0;
+  font-weight: 500;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.gl-hint[data-hidden="true"] {
+  opacity: 0;
+  translate: 0 -14px;
+  pointer-events: none;
+}
+
+/* 放不下导航和提示条并排的宽度：提示条挪到导航下面 */
+@media (max-width: 940px) {
+  .gl-hint {
+    top: 70px;
+    right: 16px;
+  }
+}
+
+/* ---------- 电视遥控条 ---------- */
+
+.gl-remote {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 12px 10px 22px;
+  translate: -50% 0;
+  transition:
+    opacity 420ms ease,
+    translate 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    --gx 700ms ease,
+    --gy 700ms ease;
+}
+
+.gl-remote[data-hidden="true"] {
+  opacity: 0;
+  translate: -50% 18px;
+  pointer-events: none;
+}
+
+.gl-remote-now {
+  display: grid;
+  min-width: 8.6em;
+  margin: 0;
+}
+
+.gl-remote-now span {
+  font-family: var(--gl-mono);
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--gl-pink-deep);
+}
+
+.gl-remote-now b {
+  font-weight: 600;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.gl-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.gl-controls button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.78);
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 6px 14px -6px oklch(40% 0.1 330 / 0.35);
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 200ms ease;
+}
+
+.gl-controls button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: #fff;
+}
+
+.gl-controls button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.96);
+}
+
+.gl-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.gl-controls button[aria-pressed="true"] {
+  color: var(--gl-green);
+}
+
+.gl-controls .gl-degauss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px 0 14px;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.gl-time {
+  display: grid;
+  min-width: 4.6em;
+  margin: 0;
+  font-family: var(--gl-mono);
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--gl-ink-soft);
+}
+
+.gl-time time {
+  color: var(--gl-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 控制台里的错位故障（只在方案 D 里加强） ---------- */
+
+.gl-filter-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gl-layer-console .works-index {
+  filter:
+    drop-shadow(-2px 0 #ff1e4f)
+    drop-shadow(2px 0 #00f0ff);
+}
+
+.gl-layer-console .works-media-layer {
+  opacity: 0.56;
+}
+
+.gl-layer-console .layer-red {
+  animation: gl-mis-red 3.1s steps(1, end) infinite;
+}
+
+.gl-layer-console .layer-blue {
+  animation: gl-mis-blue 3.1s steps(1, end) infinite;
+}
+
+.gl-layer-console .works-vertical-title {
+  animation: gl-title-shift 2.6s steps(1, end) infinite;
+}
+
+/* 常驻的故障层：往下滚的亮带、一闪而过的撕裂细线、偶尔一下很轻的闪屏 */
+.gl-console-fx {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gl-console-fx::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -20%;
+  height: 18%;
+  background: linear-gradient(
+    transparent,
+    rgb(255 255 255 / 0.06) 42%,
+    rgb(150 255 236 / 0.1) 50%,
+    rgb(255 255 255 / 0.05) 58%,
+    transparent
+  );
+  mix-blend-mode: screen;
+  animation: gl-roll-bar 6.5s linear infinite;
+}
+
+/* 亮度变化很小、两下之间隔得开，不会变成频闪 */
+.gl-console-fx::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: #fff;
+  mix-blend-mode: soft-light;
+  animation: gl-console-flicker 4.3s steps(1, end) infinite;
+}
+
+.gl-console-fx i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 20%;
+  height: 2px;
+  opacity: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 60 120 / 0.85) 20%, rgb(90 240 255 / 0.85) 70%, transparent);
+  box-shadow: 0 0 8px rgb(90 240 255 / 0.6);
+  animation: gl-tear-line 2.9s steps(1, end) infinite;
+}
+
+.gl-console-fx i:nth-child(2) {
+  height: 1px;
+  animation-duration: 3.7s;
+  animation-delay: -1.2s;
+}
+
+.gl-console-fx i:nth-child(3) {
+  height: 3px;
+  animation-duration: 5.3s;
+  animation-delay: -2.6s;
+}
+
+/* 大图、弹窗、当前分类时不时错开一下 */
+.gl-layer-console .works-media-stack {
+  animation: gl-stack-jolt 3.3s steps(1, end) infinite;
+}
+
+.gl-layer-console .works-dialog-stack {
+  animation: gl-dialog-jolt 4.6s steps(1, end) 1.2s infinite;
+}
+
+.gl-layer-console .works-index-button[data-active="true"] {
+  animation: gl-index-jitter 2.4s steps(1, end) infinite;
+}
+
+@keyframes gl-roll-bar {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(700%);
+  }
+}
+
+@keyframes gl-console-flicker {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  61% {
+    opacity: 0.16;
+  }
+  62% {
+    opacity: 0;
+  }
+  80% {
+    opacity: 0.1;
+  }
+  81% {
+    opacity: 0;
+  }
+}
+
+@keyframes gl-tear-line {
+  0%,
+  70%,
+  100% {
+    opacity: 0;
+    top: 20%;
+    translate: 0 0;
+  }
+  72% {
+    opacity: 1;
+    top: 31%;
+    translate: -30px 0;
+  }
+  74% {
+    opacity: 0.7;
+    top: 64%;
+    translate: 24px 0;
+  }
+  76% {
+    opacity: 0;
+  }
+  90% {
+    opacity: 0.9;
+    top: 82%;
+    translate: 0 0;
+  }
+  91% {
+    opacity: 0;
+  }
+}
+
+@keyframes gl-stack-jolt {
+  0%,
+  80%,
+  100% {
+    translate: 0 0;
+  }
+  81% {
+    translate: -14px 0;
+  }
+  82% {
+    translate: 9px 3px;
+  }
+  83% {
+    translate: -4px 0;
+  }
+  84% {
+    translate: 0 0;
+  }
+}
+
+@keyframes gl-dialog-jolt {
+  0%,
+  88%,
+  100% {
+    translate: 0 0;
+    clip-path: none;
+    filter: none;
+  }
+  89% {
+    translate: -8px 0;
+    clip-path: inset(0 0 55% 0);
+    filter: drop-shadow(-3px 0 #ff1e4f) drop-shadow(3px 0 #00f0ff);
+  }
+  90% {
+    translate: 6px 0;
+    clip-path: inset(40% 0 0 0);
+  }
+  91% {
+    translate: 0 0;
+    clip-path: none;
+    filter: drop-shadow(-2px 0 #ff1e4f) drop-shadow(2px 0 #00f0ff);
+  }
+  92% {
+    filter: none;
+  }
+}
+
+@keyframes gl-index-jitter {
+  0%,
+  84%,
+  100% {
+    text-shadow: none;
+    translate: 0 0;
+  }
+  86% {
+    text-shadow:
+      -3px 0 #ff1e4f,
+      3px 0 #00f0ff;
+    translate: 3px 0;
+  }
+  88% {
+    text-shadow:
+      2px 0 #ff1e4f,
+      -2px 0 #00f0ff;
+    translate: -2px 0;
+  }
+}
+
+/* 切换分类：不糊，直接一条条错开着跳进来 */
+.gl-layer-console .works-media-in {
+  animation: gl-media-in 680ms steps(1, end) both;
+}
+
+.gl-layer-console .works-media-out {
+  animation: gl-media-out 520ms steps(1, end) both;
+}
+
+@keyframes gl-mis-red {
+  0%,
+  62%,
+  100% {
+    translate: 0 0;
+  }
+  64% {
+    translate: -18px 0;
+  }
+  66% {
+    translate: 10px 2px;
+  }
+  68% {
+    translate: -30px -2px;
+  }
+  70% {
+    translate: -6px 0;
+  }
+  88% {
+    translate: -14px 0;
+  }
+  90% {
+    translate: 0 0;
+  }
+}
+
+@keyframes gl-mis-blue {
+  0%,
+  62%,
+  100% {
+    translate: 0 0;
+  }
+  64% {
+    translate: 18px 0;
+  }
+  66% {
+    translate: -10px -2px;
+  }
+  68% {
+    translate: 30px 2px;
+  }
+  70% {
+    translate: 6px 0;
+  }
+  88% {
+    translate: 14px 0;
+  }
+  90% {
+    translate: 0 0;
+  }
+}
+
+@keyframes gl-title-shift {
+  0%,
+  74%,
+  100% {
+    translate: 0 0;
+    clip-path: none;
+    text-shadow:
+      -4px 0 #ff164b,
+      4px 0 #00eaff,
+      0 16px 26px rgb(0 0 0 / 0.84);
+  }
+  76% {
+    translate: 6px 0;
+    clip-path: inset(0 0 46% 0);
+    text-shadow:
+      -16px 0 #ff164b,
+      12px 0 #00eaff,
+      0 16px 26px rgb(0 0 0 / 0.84);
+  }
+  78% {
+    translate: -8px 0;
+    clip-path: inset(38% 0 0 0);
+    text-shadow:
+      10px 0 #ff164b,
+      -14px 0 #00eaff,
+      0 16px 26px rgb(0 0 0 / 0.84);
+  }
+  80% {
+    translate: 2px 0;
+    clip-path: none;
+    text-shadow:
+      -8px 0 #ff164b,
+      8px 0 #00eaff,
+      0 16px 26px rgb(0 0 0 / 0.84);
+  }
+  82% {
+    translate: 0 0;
+    text-shadow:
+      -4px 0 #ff164b,
+      4px 0 #00eaff,
+      0 16px 26px rgb(0 0 0 / 0.84);
+  }
+}
+
+@keyframes gl-media-in {
+  0% {
+    opacity: 0;
+    clip-path: inset(46% 0 48% 0);
+    translate: -46px 0;
+  }
+  6% {
+    opacity: 1;
+    clip-path: inset(10% 0 74% 0);
+    translate: 34px 0;
+  }
+  12% {
+    clip-path: inset(62% 0 10% 0);
+    translate: -26px 0;
+  }
+  18% {
+    clip-path: inset(28% 0 44% 0);
+    translate: 18px 0;
+  }
+  26% {
+    clip-path: inset(0 0 58% 0);
+    translate: -12px 0;
+  }
+  34% {
+    clip-path: inset(36% 0 0 0);
+    translate: 8px 0;
+  }
+  44% {
+    clip-path: inset(0 0 16% 0);
+    translate: -4px 0;
+  }
+  56%,
+  100% {
+    opacity: 1;
+    clip-path: inset(0);
+    translate: 0 0;
+  }
+}
+
+@keyframes gl-media-out {
+  0% {
+    opacity: 0.9;
+    clip-path: inset(0);
+    translate: 0 0;
+  }
+  20% {
+    clip-path: inset(0 0 48% 0);
+    translate: 28px 0;
+  }
+  40% {
+    opacity: 0.7;
+    clip-path: inset(52% 0 12% 0);
+    translate: -36px 0;
+  }
+  60% {
+    clip-path: inset(20% 0 64% 0);
+    translate: 48px 0;
+  }
+  80% {
+    opacity: 0.3;
+    clip-path: inset(70% 0 22% 0);
+    translate: -60px 0;
+  }
+  100% {
+    opacity: 0;
+    clip-path: inset(50% 0 50% 0);
+    translate: 80px 0;
+  }
+}
+
+/* ---------- 窄屏 ---------- */
+
+@media (max-width: 560px) {
+  .gl-nav {
+    top: 10px;
+    left: 10px;
+  }
+
+  .gl-nav a {
+    padding: 0 9px;
+    font-size: 0.86rem;
+  }
+
+  .gl-nav .brand {
+    padding: 0 9px 0 10px;
+  }
+
+  .gl-hint {
+    top: 66px;
+    left: 10px;
+    right: 10px;
+    padding: 10px 16px;
+  }
+
+  .gl-hint p {
+    font-size: 0.86rem;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .gl-remote {
+    left: 10px;
+    right: 10px;
+    bottom: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 12px;
+    padding: 12px;
+    translate: none;
+  }
+
+  .gl-remote[data-hidden="true"] {
+    translate: 0 18px;
+  }
+
+  .gl-remote-now {
+    display: flex;
+    flex-basis: 100%;
+    justify-content: center;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .gl-remote .gl-time {
+    display: none;
+  }
+
+  .gl-controls {
+    gap: 6px;
+  }
+
+  .gl-controls .gl-degauss {
+    padding: 0;
+    min-width: 44px;
+  }
+
+  .gl-controls .gl-degauss span {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gl-layer-console .layer-red,
+  .gl-layer-console .layer-blue,
+  .gl-layer-console .works-vertical-title,
+  .gl-layer-console .works-media-stack,
+  .gl-layer-console .works-dialog-stack,
+  .gl-layer-console .works-index-button,
+  .gl-console-fx,
+  .gl-console-fx::before,
+  .gl-console-fx::after,
+  .gl-console-fx i {
+    animation: none;
+  }
+
+  .gl-console-fx {
+    display: none;
+  }
+
+  .gl-layer-console .works-media-in,
+  .gl-layer-console .works-media-out {
+    animation-duration: 1ms;
+  }
+}

@@ -43,3 +43,9 @@ public/assets/character-tech-cutout.png
 public/assets/material-quiet-reader.jpg
 public/assets/trail-frame-*.jpg
 public/assets/user-*.jpg
+
+# macOS / local tooling
+.DS_Store
+.claude/
+.impeccable/review/
+.impeccable/hook.cache.json

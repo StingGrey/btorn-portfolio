@@ -1,0 +1,1051 @@
+/* 方案 B：视觉小说。整页是一部能玩的 galgame：标题画面、对话框、选项、转场、CG 鉴赏。 */
+
+@property --gg-w {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+html[data-variant="galge"] {
+  background: #e9f7ff;
+  scrollbar-color: #7fc6ec #e9f7ff;
+}
+
+.gg-root {
+  --gg-navy: #173a5e;
+  --gg-ink2: #2b6487;
+  --gg-mint: #c4f2ec;
+  --gg-mint-deep: #7fd6cd;
+  --gg-berry: #e94c80;
+  --gg-pink-soft: #ffd1e3;
+  --gg-cn: "ZCOOL XiaoWei", "Songti SC", "STSong", serif;
+  --gg-ui: "M PLUS Rounded 1c", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--gg-navy);
+  background: #e9f7ff;
+  font-family: var(--gg-cn);
+}
+
+.gg-root ::selection {
+  color: var(--gg-navy);
+  background: var(--gg-pink-soft);
+}
+
+.gg-root :focus-visible {
+  outline: 3px solid var(--gg-berry);
+  outline-offset: 3px;
+}
+
+.gg-root button {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- 游戏画面 ---------- */
+
+.gg-screen {
+  position: relative;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  isolation: isolate;
+  outline: none;
+}
+
+.gg-screen[data-mode="play"] {
+  cursor: pointer;
+}
+
+.gg-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.gg-sky,
+.gg-petals {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.gg-petals {
+  z-index: 3;
+}
+
+.gg-sprite {
+  position: absolute;
+  z-index: 2;
+  right: 7vw;
+  bottom: 0;
+  height: 94%;
+  aspect-ratio: 1148 / 1800;
+  transform-origin: 50% 100%;
+  animation: gg-breathe 4.2s ease-in-out infinite;
+}
+
+.gg-sprite img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  filter: drop-shadow(0 24px 30px rgba(23, 58, 94, 0.2));
+}
+
+.gg-sprite[data-face="happy"] {
+  animation:
+    gg-hop 720ms cubic-bezier(0.22, 1, 0.36, 1),
+    gg-breathe 4.2s ease-in-out 720ms infinite;
+}
+
+.gg-sprite[data-face="surprise"] {
+  animation: gg-jump 560ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gg-sprite[data-face="shy"] {
+  animation: gg-shy 640ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.gg-emote {
+  position: absolute;
+  top: 3%;
+  left: 60%;
+  width: clamp(58px, 6vw, 86px);
+  animation:
+    gg-pop 520ms cubic-bezier(0.3, 1.7, 0.5, 1) both,
+    gg-float 2.4s ease-in-out 520ms infinite;
+}
+
+.gg-emote svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+.gg-emote-bg {
+  fill: #fff;
+  stroke: var(--gg-navy);
+  stroke-width: 2.5px;
+}
+
+.gg-emote-ink {
+  fill: var(--gg-navy);
+}
+
+.gg-emote-ink.is-pink {
+  fill: #ff5f8f;
+}
+
+.gg-emote-ink.is-blue {
+  fill: #4fb2ff;
+}
+
+.gg-flash {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  pointer-events: none;
+  background: #fff;
+  opacity: 0;
+  animation: gg-flash 480ms ease-out forwards;
+}
+
+.gg-wipe {
+  --gg-w: 0px;
+  position: absolute;
+  z-index: 19;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(120deg, #ffffff 0 24px, var(--gg-pink-soft) 24px 48px);
+  -webkit-mask: repeating-linear-gradient(120deg, #000 0 var(--gg-w), transparent var(--gg-w) 48px);
+  mask: repeating-linear-gradient(120deg, #000 0 var(--gg-w), transparent var(--gg-w) 48px);
+  animation: gg-wipe 940ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+/* ---------- 标题画面 ---------- */
+
+.gg-title {
+  position: absolute;
+  z-index: 6;
+  left: 7vw;
+  top: 13svh;
+}
+
+.gg-logo {
+  margin: 0;
+  font-family: var(--gg-ui);
+  font-weight: 800;
+  font-size: clamp(4.2rem, 10vw, 6rem);
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow:
+    4px 0 0 var(--gg-navy),
+    -4px 0 0 var(--gg-navy),
+    0 4px 0 var(--gg-navy),
+    0 -4px 0 var(--gg-navy),
+    3px 3px 0 var(--gg-navy),
+    -3px 3px 0 var(--gg-navy),
+    3px -3px 0 var(--gg-navy),
+    -3px -3px 0 var(--gg-navy),
+    0 14px 24px rgba(23, 58, 94, 0.28);
+  animation: gg-title-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.gg-logo span span {
+  color: #ff5f8f;
+}
+
+.gg-subtitle {
+  margin: 14px 0 0 6px;
+  font-size: clamp(1.2rem, 1.8vw, 1.55rem);
+  color: var(--gg-navy);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 14px rgba(255, 255, 255, 0.85);
+}
+
+.gg-menu {
+  --row: 56px;
+  position: relative;
+  display: grid;
+  margin-top: 7svh;
+  padding-left: 44px;
+}
+
+.gg-menu button {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  height: var(--row);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: var(--gg-ui);
+  font-weight: 800;
+  font-size: 1.55rem;
+  letter-spacing: 0.06em;
+  color: var(--gg-navy);
+  text-shadow: 0 2px 0 #fff, 0 0 12px rgba(255, 255, 255, 0.9);
+  transition: color 160ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gg-menu button small {
+  font-family: var(--gg-cn);
+  font-weight: 400;
+  font-size: 1rem;
+  letter-spacing: 0;
+  color: var(--gg-ink2);
+}
+
+.gg-menu button:hover,
+.gg-menu button:focus-visible {
+  color: var(--gg-berry);
+  transform: translateX(8px);
+}
+
+.gg-menu-cursor {
+  position: absolute;
+  left: 0;
+  top: calc(var(--idx) * var(--row) + 13px);
+  width: 30px;
+  fill: #ffd84d;
+  stroke: #fff;
+  stroke-width: 2.5px;
+  filter: drop-shadow(0 3px 4px rgba(23, 58, 94, 0.3));
+  transition: top 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: gg-spin 6s linear infinite;
+}
+
+/* ---------- 选项 ---------- */
+
+.gg-choices {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 40%;
+  display: grid;
+  gap: 14px;
+  width: min(460px, 84vw);
+  transform: translate(-50%, -50%);
+}
+
+.gg-choices button {
+  min-height: 56px;
+  padding: 10px 24px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  color: var(--gg-navy);
+  background: #fff;
+  cursor: pointer;
+  font-size: 1.2rem;
+  box-shadow:
+    0 0 0 2px var(--gg-mint-deep),
+    0 8px 18px rgba(23, 58, 94, 0.2);
+  animation: gg-choice-in 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i) * 70ms);
+  transition: background 160ms ease, color 160ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gg-choices button:hover,
+.gg-choices button:focus-visible {
+  color: #fff;
+  background: var(--gg-berry);
+  transform: scale(1.03);
+}
+
+/* ---------- 对话框 ---------- */
+
+.gg-box {
+  position: absolute;
+  z-index: 10;
+  left: 5vw;
+  right: 5vw;
+  bottom: 3.2svh;
+  min-height: clamp(150px, 24svh, 220px);
+  padding: 32px 44px 28px;
+  border: 5px solid #fff;
+  border-radius: 26px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.22) 0 2px, transparent 2px 7px),
+    var(--gg-mint);
+  box-shadow:
+    inset 0 0 0 2px var(--gg-mint-deep),
+    0 14px 30px rgba(23, 58, 94, 0.24);
+  cursor: pointer;
+  animation: gg-box-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gg-box[data-narration="true"] {
+  text-align: center;
+}
+
+.gg-name {
+  position: absolute;
+  top: -24px;
+  left: 34px;
+  padding: 7px 24px 8px;
+  border: 3px solid #fff;
+  border-radius: 16px 16px 16px 5px;
+  color: #fff;
+  background: var(--gg-berry);
+  font-size: 1.18rem;
+  box-shadow: 0 6px 12px rgba(233, 76, 128, 0.32);
+}
+
+.gg-quick {
+  position: absolute;
+  top: -19px;
+  right: 30px;
+  display: flex;
+  gap: 6px;
+}
+
+.gg-quick button {
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--gg-ink2);
+  background: #fff;
+  cursor: pointer;
+  font-family: var(--gg-ui);
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  box-shadow: 0 3px 8px rgba(23, 58, 94, 0.18);
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.gg-quick button:hover {
+  color: var(--gg-berry);
+}
+
+.gg-quick button[aria-pressed="true"] {
+  color: #fff;
+  background: var(--gg-ink2);
+}
+
+.gg-line {
+  max-width: 62ch;
+  margin: 0;
+  font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+  line-height: 1.85;
+}
+
+.gg-box[data-narration="true"] .gg-line {
+  margin: 0 auto;
+}
+
+.gg-ghost {
+  visibility: hidden;
+}
+
+.gg-next {
+  position: absolute;
+  right: 34px;
+  bottom: 20px;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 12px solid var(--gg-berry);
+  animation: gg-bob 900ms ease-in-out infinite;
+}
+
+/* ---------- LOG / CONFIG ---------- */
+
+.gg-panel {
+  position: absolute;
+  z-index: 30;
+  inset: 6svh 8vw;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px 28px;
+  border: 5px solid #fff;
+  border-radius: 26px;
+  color: var(--gg-navy);
+  background: #f4fdff;
+  box-shadow: 0 24px 60px rgba(23, 58, 94, 0.36);
+  cursor: default;
+  animation: gg-panel-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gg-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gg-panel h2 {
+  margin: 0;
+  font-family: var(--gg-ui);
+  font-weight: 800;
+  font-size: 1.6rem;
+  letter-spacing: 0.12em;
+  color: var(--gg-ink2);
+}
+
+.gg-close {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #fff !important;
+  background: var(--gg-ink2);
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.gg-close:hover {
+  background: var(--gg-berry);
+}
+
+.gg-log {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 14px;
+  margin: 16px 0 0;
+  padding: 0 8px 0 0;
+  overflow: auto;
+  list-style: none;
+  scrollbar-color: #7fc6ec transparent;
+}
+
+.gg-log li {
+  padding-bottom: 12px;
+  border-bottom: 1.5px dashed #a8dfe0;
+}
+
+.gg-log b {
+  font-weight: 400;
+  font-size: 0.98rem;
+  color: var(--gg-berry);
+}
+
+.gg-log p {
+  margin: 4px 0 0;
+  font-size: 1.12rem;
+  line-height: 1.7;
+}
+
+.gg-log-empty {
+  color: var(--gg-ink2);
+}
+
+.gg-range {
+  display: grid;
+  grid-template-columns: 9em 1fr 6.5em;
+  align-items: center;
+  gap: 18px;
+  margin-top: 26px;
+  font-size: 1.12rem;
+}
+
+.gg-range input {
+  width: 100%;
+  accent-color: var(--gg-berry);
+}
+
+.gg-range output {
+  font-family: var(--gg-ui);
+  font-weight: 500;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--gg-ink2);
+}
+
+.gg-preview {
+  min-height: 3.6em;
+  margin: 30px 0 0;
+  padding: 18px 22px;
+  border-radius: 18px;
+  background: var(--gg-mint);
+  font-size: 1.15rem;
+  line-height: 1.7;
+}
+
+/* ---------- CG 鉴赏 ---------- */
+
+.gg-cg {
+  padding: 96px 5vw 110px;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(43, 100, 135, 0.12) 1px, transparent 1.5px) 0 0 / 22px 22px,
+    linear-gradient(180deg, #d6f0ff, #f3fbff 32%);
+}
+
+.gg-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1180px;
+  margin: 0 auto 34px;
+}
+
+.gg-section-head h2 {
+  margin: 0;
+  font-weight: 400;
+  font-size: clamp(2.2rem, 4.6vw, 3.6rem);
+}
+
+.gg-section-head p {
+  margin: 0;
+  font-family: var(--gg-ui);
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--gg-ink2);
+}
+
+.gg-section-head b {
+  font-weight: 800;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--gg-berry);
+}
+
+.gg-cg-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 26px);
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.gg-cg-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  padding: 0;
+  overflow: hidden;
+  border: 5px solid #fff;
+  border-radius: 20px;
+  background: #bfe6f7;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(23, 58, 94, 0.16);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 260ms ease;
+}
+
+.gg-cg-card[data-cutout="true"] {
+  background: linear-gradient(180deg, #8fd0ff, #e1f4ff);
+}
+
+.gg-cg-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter 700ms cubic-bezier(0.22, 1, 0.36, 1), transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gg-cg-card[data-cutout="true"] img {
+  object-fit: contain;
+}
+
+.gg-cg-card[data-unlocked="false"] img {
+  filter: blur(14px) saturate(0.4) brightness(1.12);
+  transform: scale(1.12);
+}
+
+.gg-cg-card[data-unlocked="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.85) 50%, transparent 70%) 0 0 / 260% 100%;
+  animation: gg-shimmer 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.gg-cg-card[data-unlocked="true"]:hover {
+  transform: translateY(-5px) rotate(-0.5deg);
+  box-shadow: 0 18px 30px rgba(23, 58, 94, 0.22);
+}
+
+.gg-cg-card[data-unlocked="true"]:hover img {
+  transform: scale(1.04);
+}
+
+.gg-cg-lock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: #fff;
+  background: rgba(23, 58, 94, 0.3);
+  font-size: 1.1rem;
+  text-shadow: 0 1px 4px rgba(10, 30, 50, 0.4);
+}
+
+.gg-cg-caption {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--gg-navy);
+  background: #fff;
+  font-family: var(--gg-ui);
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+
+.gg-cg-card.is-empty {
+  cursor: default;
+  background: repeating-linear-gradient(135deg, #dff3fb 0 14px, #eef9fe 14px 28px);
+  box-shadow: none;
+}
+
+.gg-cg-card.is-empty .gg-cg-lock {
+  color: var(--gg-ink2);
+  background: none;
+  text-shadow: none;
+}
+
+/* ---------- 梦境 ROUTE ---------- */
+
+.gg-route {
+  padding-top: 92px;
+  background: #e9f7ff;
+}
+
+.gg-chapter {
+  padding: 0 16px 44px;
+  text-align: center;
+}
+
+.gg-chapter h2 {
+  margin: 0;
+  font-family: var(--gg-ui);
+  font-weight: 800;
+  font-size: clamp(2.6rem, 6vw, 4.8rem);
+  letter-spacing: 0.04em;
+}
+
+.gg-chapter p {
+  margin: 10px 0 0;
+  font-size: 1.15rem;
+  color: var(--gg-ink2);
+}
+
+/* ---------- END ---------- */
+
+.gg-end {
+  padding: 110px 16px 150px;
+  text-align: center;
+  background: linear-gradient(180deg, #e9f7ff, #ffd9e8);
+}
+
+.gg-end .gg-end-mark {
+  margin: 0;
+  font-family: var(--gg-ui);
+  font-weight: 800;
+  font-size: clamp(3.4rem, 9vw, 6rem);
+  letter-spacing: 0.2em;
+  color: #fff;
+  text-shadow:
+    3px 0 0 var(--gg-navy),
+    -3px 0 0 var(--gg-navy),
+    0 3px 0 var(--gg-navy),
+    0 -3px 0 var(--gg-navy),
+    0 12px 20px rgba(23, 58, 94, 0.22);
+}
+
+.gg-end .gg-end-thanks {
+  margin: 14px 0 8px;
+  font-size: 1.9rem;
+  color: var(--gg-navy);
+}
+
+.gg-end p {
+  margin: 0;
+  font-size: 1.08rem;
+  color: var(--gg-ink2);
+}
+
+.gg-end button {
+  min-height: 54px;
+  margin-top: 28px;
+  padding: 0 32px;
+  border: 4px solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--gg-berry);
+  cursor: pointer;
+  font-size: 1.15rem;
+  box-shadow: 0 10px 22px rgba(233, 76, 128, 0.3);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gg-end button:hover {
+  transform: translateY(-3px);
+}
+
+/* ---------- CG 大图 ---------- */
+
+.gg-viewer {
+  position: fixed;
+  z-index: 180;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 4vw;
+  background: rgba(10, 28, 48, 0.86);
+  cursor: zoom-out;
+  animation: gg-fade 260ms ease both;
+}
+
+.gg-viewer img {
+  max-width: 92vw;
+  max-height: 86svh;
+  border: 5px solid #fff;
+  border-radius: 14px;
+  object-fit: contain;
+  animation: gg-viewer-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.gg-viewer img[data-cutout="true"] {
+  background: linear-gradient(180deg, #8fd0ff, #e1f4ff);
+}
+
+.gg-viewer .gg-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+/* ---------- 动画 ---------- */
+
+@keyframes gg-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.004, 1.008);
+  }
+}
+
+@keyframes gg-hop {
+  0% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-4%);
+  }
+  45% {
+    transform: translateY(0) scale(1.02, 0.98);
+  }
+  65% {
+    transform: translateY(-2%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes gg-jump {
+  0% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-6%) scale(0.98, 1.03);
+  }
+  55% {
+    transform: translateY(0) translateX(-8px);
+  }
+  70% {
+    transform: translateX(8px);
+  }
+  85% {
+    transform: translateX(-4px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes gg-shy {
+  to {
+    transform: translateX(12px) rotate(-2.5deg) scale(0.985);
+  }
+}
+
+@keyframes gg-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes gg-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes gg-flash {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes gg-wipe {
+  0% {
+    --gg-w: 0px;
+  }
+  46%,
+  54% {
+    --gg-w: 48px;
+  }
+  100% {
+    --gg-w: 0px;
+  }
+}
+
+@keyframes gg-title-in {
+  from {
+    transform: translateY(24px) scale(0.94);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes gg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gg-choice-in {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gg-box-in {
+  from {
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gg-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
+
+@keyframes gg-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gg-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -40% 0;
+  }
+}
+
+@keyframes gg-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes gg-viewer-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* ---------- 窄屏 ---------- */
+
+@media (max-width: 760px) {
+  .gg-sprite {
+    right: 50%;
+    bottom: 14svh;
+    height: 66%;
+    translate: 50% 0;
+  }
+
+  .gg-title {
+    left: 6vw;
+    right: 6vw;
+    top: 7svh;
+    bottom: 28px;
+  }
+
+  .gg-logo {
+    font-size: clamp(3.4rem, 17vw, 4.6rem);
+  }
+
+  .gg-subtitle {
+    font-size: 1.1rem;
+  }
+
+  .gg-menu {
+    --row: 50px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .gg-menu button {
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    font-size: 1.15rem;
+    text-shadow: none;
+    box-shadow: 0 6px 14px rgba(23, 58, 94, 0.18);
+  }
+
+  .gg-menu button:hover,
+  .gg-menu button:focus-visible {
+    transform: none;
+  }
+
+  .gg-menu-cursor {
+    display: none;
+  }
+
+  .gg-box {
+    left: 3vw;
+    right: 3vw;
+    bottom: 2svh;
+    min-height: 150px;
+    padding: 30px 20px 26px;
+  }
+
+  .gg-name {
+    left: 16px;
+    font-size: 1.02rem;
+  }
+
+  .gg-quick {
+    right: 10px;
+    gap: 4px;
+  }
+
+  .gg-quick button {
+    padding: 6px 8px;
+    font-size: 0.64rem;
+    letter-spacing: 0.04em;
+  }
+
+  .gg-line {
+    font-size: 1.08rem;
+    line-height: 1.75;
+  }
+
+  .gg-choices {
+    top: 36%;
+  }
+
+  .gg-panel {
+    inset: 3svh 3vw;
+    padding: 20px 18px 22px;
+  }
+
+  .gg-range {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .gg-cg-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

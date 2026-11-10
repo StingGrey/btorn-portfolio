@@ -1,0 +1,177 @@
+/* 重启以后的页脚：和开机自检同一块黑底，全部是等宽字符。 */
+
+.ga-end {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100svh;
+  padding: clamp(80px, 12vh, 120px) 16px clamp(64px, 10vh, 110px);
+  overflow: clip;
+  background: #07060b;
+  color: #e9e2f5;
+  font-family: "VT323", ui-monospace, monospace;
+}
+
+.ga-end::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+}
+
+.ga-end ::selection {
+  color: #07060b;
+  background: #ff8fbd;
+}
+
+.ga-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 72px);
+  width: min(1180px, 100%);
+}
+
+/* 还没有字符画的时候，右栏一个人居中 */
+.ga-inner[data-portrait="no"] {
+  grid-template-columns: minmax(0, 620px);
+  justify-content: center;
+}
+
+.ga-portrait {
+  min-width: 0;
+}
+
+.ga-canvas {
+  display: block;
+  width: 100%;
+}
+
+.ga-logo,
+.ga-box pre {
+  margin: 0;
+  font-family: inherit;
+  white-space: pre;
+}
+
+.ga-side {
+  display: grid;
+  gap: clamp(14px, 2vw, 22px);
+  min-width: 0;
+}
+
+/* 一行一行亮起来：每行晚 40ms，亮的时候先闪一下半透明，像老终端刷字 */
+.ga-end .ga-ln {
+  opacity: 0;
+}
+
+.ga-end[data-shown="true"] .ga-ln {
+  animation: ga-ln 110ms steps(2, end) calc(var(--i) * 40ms) both;
+}
+
+@keyframes ga-ln {
+  from {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ga-logo {
+  font-size: 22px;
+  line-height: 1;
+  color: #f4eefc;
+}
+
+.ga-logo [data-tone="pink"] {
+  color: #ff5f8f;
+}
+
+.ga-tag {
+  margin: 0;
+  font-size: clamp(20px, 2.2vw, 26px);
+  color: #b9add3;
+}
+
+.ga-cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.95em;
+  margin-left: 4px;
+  vertical-align: -0.12em;
+  background: #ff8fbd;
+  animation: ga-blink 1s steps(1, end) infinite;
+}
+
+@keyframes ga-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.ga-box pre {
+  font-size: 20px;
+  line-height: 1.2;
+  color: #b9add3;
+}
+
+.ga-title {
+  color: #ff8fbd;
+}
+
+.ga-end .ga-heal {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #8fffc4;
+  font: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+.ga-end .ga-heal:hover {
+  color: #07060b;
+  background: #8fffc4;
+}
+
+.ga-end .ga-heal:focus-visible {
+  outline: 2px solid #ff8fbd;
+  outline-offset: 2px;
+}
+
+.ga-fine {
+  max-width: 52ch;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.3;
+  color: #7f769a;
+}
+
+@media (max-width: 760px) {
+  .ga-inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ga-portrait {
+    order: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ga-end .ga-ln {
+    opacity: 1;
+    animation: none !important;
+  }
+
+  .ga-cursor {
+    animation: none;
+  }
+}

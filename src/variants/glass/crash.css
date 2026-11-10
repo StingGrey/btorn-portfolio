@@ -1,0 +1,284 @@
+/* 蓝屏 → 转圈重启 → 黑屏 → ASCII 开机自检。整层盖在舞台最上面，切换都是硬切（死机就是一下子的事）。 */
+
+.gl-crash {
+  --gc-blue: #1468d8;
+  --gc-term: #07060b;
+  z-index: 8;
+  display: none;
+  pointer-events: none;
+  color: #fff;
+}
+
+.gl-crash:not([data-screen="off"]) {
+  display: block;
+  pointer-events: auto;
+}
+
+.gl-crash[data-screen="bsod"],
+.gl-crash[data-screen="restart"] {
+  background: var(--gc-blue);
+}
+
+.gl-crash[data-screen="black"] {
+  background: #000;
+}
+
+.gl-crash[data-screen="boot"] {
+  background: var(--gc-term);
+}
+
+.gc-bsod,
+.gc-restart,
+.gc-boot {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+.gl-crash[data-screen="bsod"] .gc-bsod,
+.gl-crash[data-screen="restart"] .gc-restart,
+.gl-crash[data-screen="boot"] .gc-boot {
+  display: grid;
+}
+
+/* ---------- 蓝屏 ---------- */
+
+.gc-bsod {
+  align-content: center;
+  padding: 48px clamp(24px, 9vw, 160px);
+  font-family: "Fredoka", ui-rounded, system-ui, sans-serif;
+}
+
+/* 刚死机的那一下：整屏横着撕两下（往回滑进蓝屏时不播） */
+.gl-crash[data-hit="true"] .gc-bsod {
+  animation: gc-hit 420ms steps(1, end) both;
+}
+
+.gc-bsod-inner {
+  max-width: 820px;
+}
+
+.gc-bsod p {
+  margin: 0;
+}
+
+.gc-face {
+  font-weight: 400;
+  font-size: clamp(5.5rem, 13vw, 9.5rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.gc-lead {
+  margin-top: clamp(20px, 3vw, 36px) !important;
+  max-width: 34ch;
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+  line-height: 1.35;
+}
+
+.gc-percent {
+  margin-top: clamp(18px, 2.6vw, 30px) !important;
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.gc-info {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: clamp(24px, 4vw, 44px);
+  font-size: clamp(0.85rem, 1.3vw, 1rem);
+  line-height: 1.5;
+  color: rgb(255 255 255 / 0.9);
+}
+
+.gc-qr {
+  flex: none;
+  width: clamp(78px, 9vw, 104px);
+  height: auto;
+  shape-rendering: crispEdges;
+}
+
+@keyframes gc-hit {
+  0% {
+    transform: translate(-28px, 0);
+    clip-path: inset(0 0 58% 0);
+  }
+  18% {
+    transform: translate(22px, 0);
+    clip-path: inset(36% 0 0 0);
+  }
+  36% {
+    transform: translate(-8px, 0);
+    clip-path: inset(0 0 12% 0);
+  }
+  54%,
+  100% {
+    transform: none;
+    clip-path: inset(0);
+  }
+}
+
+/* ---------- 转圈重启 ---------- */
+
+.gc-restart {
+  place-content: center;
+  justify-items: center;
+  gap: 26px;
+  font-family: "Fredoka", ui-rounded, system-ui, sans-serif;
+}
+
+.gc-restart p {
+  margin: 0;
+  font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+}
+
+/* 六个小点绕着圈追：先快后慢，追上以后一起消失再来一圈 */
+.gc-spinner {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.gc-spinner i {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: gc-orbit 5.4s infinite;
+}
+
+.gc-spinner i::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.gc-spinner i:nth-child(2) {
+  animation-delay: 0.24s;
+}
+
+.gc-spinner i:nth-child(3) {
+  animation-delay: 0.48s;
+}
+
+.gc-spinner i:nth-child(4) {
+  animation-delay: 0.72s;
+}
+
+.gc-spinner i:nth-child(5) {
+  animation-delay: 0.96s;
+}
+
+.gc-spinner i:nth-child(6) {
+  animation-delay: 1.2s;
+}
+
+@keyframes gc-orbit {
+  0% {
+    transform: rotate(225deg);
+    opacity: 1;
+    animation-timing-function: ease-out;
+  }
+  7% {
+    transform: rotate(345deg);
+    animation-timing-function: linear;
+  }
+  30% {
+    transform: rotate(455deg);
+    animation-timing-function: ease-in-out;
+  }
+  39% {
+    transform: rotate(690deg);
+    animation-timing-function: linear;
+  }
+  70% {
+    transform: rotate(815deg);
+    opacity: 1;
+    animation-timing-function: ease-out;
+  }
+  75% {
+    transform: rotate(945deg);
+    animation-timing-function: ease-out;
+  }
+  76%,
+  100% {
+    transform: rotate(945deg);
+    opacity: 0;
+  }
+}
+
+/* ---------- ASCII 开机自检 ---------- */
+
+.gc-boot {
+  align-content: start;
+  padding: clamp(72px, 12vh, 120px) clamp(16px, 6vw, 96px) 40px;
+  overflow: hidden;
+}
+
+/* 一层很淡的扫描线，像老显示器 */
+.gc-boot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+}
+
+.gc-boot pre {
+  margin: 0;
+  font: 400 clamp(17px, 2.1vw, 24px) / 1.25 "VT323", ui-monospace, monospace;
+  color: #e9e2f5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.gc-boot [data-tone="ok"] {
+  color: #8fffc4;
+}
+
+.gc-boot [data-tone="warn"] {
+  color: #ffd36b;
+}
+
+.gc-boot [data-tone="dim"] {
+  color: #8f86a8;
+}
+
+.gc-boot [data-tone="pink"] {
+  color: #ff8fbd;
+}
+
+.gc-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  vertical-align: -0.12em;
+  background: #ff8fbd;
+  animation: gc-blink 1s steps(1, end) infinite;
+}
+
+@keyframes gc-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gc-bsod {
+    animation: none;
+  }
+
+  .gc-spinner i {
+    animation-duration: 9s;
+  }
+
+  .gc-cursor {
+    animation: none;
+  }
+}
