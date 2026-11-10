@@ -152,10 +152,15 @@ const timecode = (seconds: number) => {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 };
 
-function hintText(count: number) {
-  if (count >= TOTAL_TOYS) return `All ${TOTAL_TOYS} tucked in. Now scroll to break the glass`;
-  if (count > 0) return `${count} in the jar. Keep going, or scroll to break the glass`;
-  return 'Toss the toys into the jar, then scroll to break the glass';
+const REPO_URL = 'https://github.com/StingGrey/btorn-portfolio';
+
+/** GitHub 的猫爪标志（lucide 已经不带品牌图标了，直接内联官方的 mark-github） */
+function GitHubMark() {
+  return (
+    <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true">
+      <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" />
+    </svg>
+  );
 }
 
 export default function GlassHome() {
@@ -176,9 +181,8 @@ export default function GlassHome() {
   const [remote, setRemote] = useState(false);
   const [selected, setSelected] = useState(0);
   const [entryGlitch, setEntryGlitch] = useState(0);
-  const [scrolled, setScrolled] = useState(false);
   const [navHidden, setNavHidden] = useState(false);
-  // 导航自动隐藏：往下滚就收起来，往上滚、或者指针移到左上角就探出来；在页面最顶上一直在
+  // 左上角 logo 和右上角 GitHub 一起自动隐藏：往下滚就收起来，往上滚、或者指针移到页面顶部就探出来；在页面最顶上一直在
   const [navAway, setNavAway] = useState(false);
   const [navPeek, setNavPeek] = useState(false);
   const [asciiWorld, setAsciiWorld] = useState(false);
@@ -299,7 +303,6 @@ export default function GlassHome() {
       // 遥控条只在电视停在正中间的那一段出现；退到一边、开始冒弹窗就收起来
       put('remote', p > SEQ.interactive && p < SEQ.asideStart, setRemote);
       put('navHidden', (p >= SEQ.navHide && p < SEQ.navShow) || (p >= SEQ.crashStart && p < SEQ.bootEnd), setNavHidden);
-      put('scrolled', p > at(12), setScrolled);
       // 滚动方向：同一个方向累计滚过 10px 才算数，免得触控板的小抖动让导航一闪一闪
       const y = window.scrollY;
       const delta = y - lastY;
@@ -396,18 +399,16 @@ export default function GlassHome() {
     return () => stopSmoothScroll();
   }, [reducedMotion]);
 
-  // 指针移到左上角，导航就探出来（手机上没有指针，靠往上滚）
+  // 指针移到页面顶部，两个角上的胶囊就探出来（手机上没有指针，靠往上滚）
   useEffect(() => {
     let frame = 0;
-    let x = 0;
     let y = 0;
     const check = () => {
       frame = 0;
-      setNavPeek(y < 96 && x < 480);
+      setNavPeek(y < 96);
     };
     const onMove = (event: PointerEvent) => {
       if (event.pointerType !== 'mouse') return;
-      x = event.clientX;
       y = event.clientY;
       if (!frame) frame = requestAnimationFrame(check);
     };
@@ -438,13 +439,13 @@ export default function GlassHome() {
       data-world={asciiWorld ? 'ascii' : 'glass'}
     >
       <Glass className="gl-nav" radius={999} bezel={14} refraction={28} blur={12}>
-        <nav aria-label="Sections">
-          <Logo href="#top" />
-          <a href="#top">Toys</a>
-          <a href="#dreams">Dreams</a>
-          <a href="#signal">TV</a>
-          <a href="#hi">Hi</a>
-        </nav>
+        <Logo href="#top" />
+      </Glass>
+      <Glass className="gl-nav gl-nav-repo" radius={999} bezel={14} refraction={28} blur={12}>
+        <a href={REPO_URL} target="_blank" rel="noopener noreferrer" aria-label="Source code on GitHub">
+          <GitHubMark />
+          <span>GitHub</span>
+        </a>
       </Glass>
 
       <main>
@@ -525,10 +526,6 @@ export default function GlassHome() {
             )}
 
             <CrashScreen ref={crashRef} jarCount={jarCount} totalToys={TOTAL_TOYS} popups={TOTAL_POPUPS} />
-
-            <Glass className="gl-hint" radius={999} bezel={12} refraction={22} blur={10} data-hidden={scrolled || hero.status !== 'ready'}>
-              <p aria-live="polite">{hintText(jarCount)}</p>
-            </Glass>
 
             <Glass className="gl-remote" radius={30} bezel={16} refraction={30} blur={12} data-hidden={!remote || !tvReady}>
               <p className="gl-remote-now" aria-live="polite">

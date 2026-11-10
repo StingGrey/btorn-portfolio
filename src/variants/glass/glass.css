@@ -128,7 +128,7 @@ html[data-variant="glass"] {
   overflow: hidden;
 }
 
-/* ---------- 导航 ---------- */
+/* ---------- 左上角 logo、右上角 GitHub：两颗胶囊一起显隐 ---------- */
 
 .gl-nav {
   position: fixed;
@@ -136,6 +136,7 @@ html[data-variant="glass"] {
   top: 16px;
   left: 16px;
   padding: 5px;
+  display: flex;
   transition:
     opacity 320ms ease,
     translate 420ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -196,10 +197,14 @@ html[data-variant="glass"] {
   color: #ff5f8f;
 }
 
-.gl-nav nav {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+.gl-nav-repo {
+  left: auto;
+  right: 16px;
+}
+
+/* gap 只给 GitHub 这颗：logo 的 BT / O / RN 是三个节点，加了 gap 会被拆开 */
+.gl-nav-repo a {
+  gap: 8px;
 }
 
 .gl-nav a {
@@ -270,7 +275,7 @@ html[data-variant="glass"] {
   background: #07060b;
 }
 
-.gl-stage:not([data-screen="off"]):is([data-screen]) > :is(.gl-layer:not(.gl-crash), .gl-hint, .gl-remote) {
+.gl-stage:not([data-screen="off"]):is([data-screen]) > :is(.gl-layer:not(.gl-crash), .gl-remote) {
   visibility: hidden;
 }
 
@@ -427,48 +432,6 @@ html[data-variant="glass"] {
 
 .gl-fallback-logo span {
   color: var(--gl-pink-deep);
-}
-
-/* 提示条在右上角，和左上角的导航错开 */
-.gl-hint {
-  position: absolute;
-  z-index: 5;
-  top: 18px;
-  right: 18px;
-  padding: 11px 20px;
-  transition:
-    opacity 500ms ease,
-    translate 600ms cubic-bezier(0.22, 1, 0.36, 1),
-    --gx 700ms ease,
-    --gy 700ms ease;
-}
-
-@starting-style {
-  .gl-hint {
-    opacity: 0;
-    translate: 0 -14px;
-  }
-}
-
-.gl-hint p {
-  margin: 0;
-  font-weight: 500;
-  font-size: 0.95rem;
-  white-space: nowrap;
-}
-
-.gl-hint[data-hidden="true"] {
-  opacity: 0;
-  translate: 0 -14px;
-  pointer-events: none;
-}
-
-/* 放不下导航和提示条并排的宽度：提示条挪到导航下面 */
-@media (max-width: 940px) {
-  .gl-hint {
-    top: 70px;
-    right: 16px;
-  }
 }
 
 /* ---------- 电视遥控条 ---------- */
@@ -999,26 +962,18 @@ html[data-variant="glass"] {
     left: 10px;
   }
 
+  .gl-nav-repo {
+    left: auto;
+    right: 10px;
+  }
+
   .gl-nav a {
-    padding: 0 9px;
+    padding: 0 12px;
     font-size: 0.86rem;
   }
 
   .gl-nav .brand {
-    padding: 0 9px 0 10px;
-  }
-
-  .gl-hint {
-    top: 66px;
-    left: 10px;
-    right: 10px;
-    padding: 10px 16px;
-  }
-
-  .gl-hint p {
-    font-size: 0.86rem;
-    white-space: normal;
-    text-align: center;
+    padding: 0 10px;
   }
 
   .gl-remote {
