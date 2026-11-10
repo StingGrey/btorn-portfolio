@@ -18,7 +18,5 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src"],
-  // 旧的挂绳卡片只是留在仓库里，页面已经不用它；它依赖的 @react-three/* 和 meshline 也已经移除，所以不参与类型检查
-  "exclude": ["src/components/lanyard"]
+  "include": ["src"]
 }
