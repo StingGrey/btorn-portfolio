@@ -297,6 +297,12 @@ html[data-variant="glass"] {
   opacity: 1;
 }
 
+/* 首屏画布停止渲染后（玻璃碎完、或者整段滚出视口）只剩一张全透明的图：不参与合成。
+   用 visibility 而不是 display，画布尺寸不变，滚回来不会触发重新布局和改尺寸 */
+.gl-canvas-host > canvas[data-active="false"] {
+  visibility: hidden;
+}
+
 /* 电视垫在最下面，控制台淡出后才露出来 */
 .gl-layer-tv {
   z-index: 1;

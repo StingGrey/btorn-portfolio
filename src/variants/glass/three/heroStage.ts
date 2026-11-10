@@ -101,6 +101,8 @@ const MASCOT_Z = -2.6;
 const BG_Z = -9;
 const MASCOT_ASPECT = 1148 / 1800;
 const STEP = 1 / 60;
+/** 拖瓶子时它最快能跑多快（每秒多少个世界单位） */
+const JAR_SPEED = 14;
 
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(Math.max((x - a) / (b - a), 0), 1);
@@ -561,6 +563,23 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
   let lastSize = '';
   let elapsed = 0;
 
+  /* 瓶子也能拖着走，layout.jar 一直是它此刻的位置。
+     jarHome 是布局里的原位，jarShift 记它被拖开了多远（占画面宽高的比例），改窗口大小后还在同一个地方；
+     jarTarget 是手指要它去的位置，物理步里一小段一小段挪过去；jarPrev 是上一个物理步的位置，渲染时插值用 */
+  const jarHome = new THREE.Vector2();
+  const jarShift = new THREE.Vector2();
+  const jarTarget = new THREE.Vector2();
+  const jarPrev = new THREE.Vector2();
+  let jarVelX = 0;
+  /** 拖动范围：左右瓶身最多出画面四分之一，往下最多沉一成，瓶口不出画面顶 */
+  const clampJar = (target: THREE.Vector2) => {
+    const { h, r } = layout.jar;
+    const limitX = Math.max(view.width * 0.5 - r * 0.5, Math.abs(jarHome.x));
+    target.x = THREE.MathUtils.clamp(target.x, -limitX, limitX);
+    target.y = THREE.MathUtils.clamp(target.y, Math.min(jarHome.y, -view.height * 0.5 - h * 0.1), view.height * 0.47 - h);
+    return target;
+  };
+
   const setMode = (toy: Toy, mode: Mode) => {
     toy.mode = mode;
     toy.since = elapsed;
@@ -603,6 +622,12 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
     const oldJar = { ...layout.jar };
     layout = computeLayout(aspect, width);
     view = viewSize(aspect);
+    // 瓶子被拖开过的话，按同样的画面比例放回去（新画面里放不下就收进拖动范围）
+    jarHome.set(layout.jar.x, layout.jar.y);
+    clampJar(jarTarget.set(jarHome.x + jarShift.x * view.width, jarHome.y + jarShift.y * view.height));
+    layout.jar.x = jarTarget.x;
+    layout.jar.y = jarTarget.y;
+    jarPrev.copy(jarTarget);
     camera.aspect = aspect;
     camera.updateProjectionMatrix();
     uAspect.value = aspect;
@@ -943,7 +968,7 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
   cleanPipeline.outputNode = vec4(sRGBTransferOETF(sceneColor.sample(screenUV).rgb.max(0)) as any, 1);
   const renderFrame = () => (progress > 0.0005 ? pipeline : cleanPipeline).render();
 
-  /* ---------- 指针：拖、扔、戳、摇瓶子 ---------- */
+  /* ---------- 指针：拖、扔、戳、拖瓶子、摇瓶子 ---------- */
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   const pickables: THREE.Object3D[] = [...toys.map((toy) => toy.object), ...letters.map((letter) => letter.mesh), jarFront];
@@ -962,6 +987,8 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
     y: number;
     pointerId: number;
   } | null = null;
+  // 按住空玻璃拖瓶子：z 是按住的那一点的深度（在这个深度的平面上跟手），offset 是瓶子原点相对那一点的偏移
+  let jarDrag: { z: number; offset: THREE.Vector2; moved: number; x: number; y: number; pointerId: number } | null = null;
   let hovered: Toy | null = null;
   let jarWobble = 0;
   let jarWobbleVel = 0;
@@ -980,16 +1007,16 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
     uPointer.value.set((event.clientX - rect.left) / rect.width, 1 - (event.clientY - rect.top) / rect.height);
   };
 
-  /** 玩具优先：瓶子里的玩具也能直接拿出来，点到空玻璃才算摇瓶子 */
+  /** 玩具优先：瓶子里的玩具也能直接拿出来，按到空玻璃才算碰瓶子（jar 是按住的那一点） */
   const pick = () => {
     raycaster.setFromCamera(ndc, camera);
     const hits = raycaster.intersectObjects(pickables, true);
     for (const hit of hits) {
       const toy = hit.object.userData.toy as Toy | undefined;
       const letter = hit.object.userData.letter as Letter | undefined;
-      if (toy || letter) return { toy, letter, jar: false };
+      if (toy || letter) return { toy, letter, jar: null };
     }
-    return hits.length > 0 ? { toy: undefined, letter: undefined, jar: true } : null;
+    return hits.length > 0 ? { toy: undefined, letter: undefined, jar: hits[0].point } : null;
   };
 
   const shakeJar = () => {
@@ -1013,7 +1040,17 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
       return;
     }
     if (hit.jar) {
-      shakeJar();
+      // 先当成拖：松手时没怎么动才算点了一下（摇一摇）
+      jarDrag = {
+        z: hit.jar.z,
+        offset: new THREE.Vector2(layout.jar.x - hit.jar.x, layout.jar.y - hit.jar.y),
+        moved: 0,
+        x: event.clientX,
+        y: event.clientY,
+        pointerId: event.pointerId,
+      };
+      canvas.setPointerCapture(event.pointerId);
+      canvas.style.cursor = 'grabbing';
       return;
     }
     if (!hit.toy) return;
@@ -1044,6 +1081,17 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
 
   const onPointerMove = (event: PointerEvent) => {
     setNdc(event);
+    if (jarDrag && jarDrag.pointerId === event.pointerId) {
+      raycaster.setFromCamera(ndc, camera);
+      plane.constant = -jarDrag.z;
+      if (raycaster.ray.intersectPlane(plane, hitPoint)) {
+        clampJar(jarTarget.set(hitPoint.x + jarDrag.offset.x, hitPoint.y + jarDrag.offset.y));
+      }
+      jarDrag.moved += Math.hypot(event.clientX - jarDrag.x, event.clientY - jarDrag.y);
+      jarDrag.x = event.clientX;
+      jarDrag.y = event.clientY;
+      return;
+    }
     if (drag) {
       raycaster.setFromCamera(ndc, camera);
       plane.constant = -drag.z;
@@ -1081,10 +1129,18 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
       if (isHovered && !letter.hovered) letter.hopVel += 3;
       letter.hovered = isHovered;
     });
-    canvas.style.cursor = toy ? 'grab' : hit?.letter || hit?.jar ? 'pointer' : '';
+    canvas.style.cursor = toy || hit?.jar ? 'grab' : hit?.letter ? 'pointer' : '';
   };
 
   const release = (event: PointerEvent) => {
+    if (jarDrag && jarDrag.pointerId === event.pointerId) {
+      // 瓶子松手就停在那儿；没怎么动就是点了一下（被系统取消的不算）
+      if (jarDrag.moved < 6 && event.type === 'pointerup') shakeJar();
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+      canvas.style.cursor = '';
+      jarDrag = null;
+      return;
+    }
     if (!drag || drag.pointerId !== event.pointerId) return;
     const { toy } = drag;
     toy.targetScale = hovered === toy && toy.mode !== 'jar' ? 1.1 : 1;
@@ -1116,9 +1172,9 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
     });
   };
 
-  // 手机上：按住玩具时取消这次触摸的页面滚动（pointerdown 先于 touchstart 触发），按在空白处照常滚动
+  // 手机上：按住玩具或瓶子时取消这次触摸的页面滚动（pointerdown 先于 touchstart 触发），按在空白处照常滚动
   const onTouchStart = (event: TouchEvent) => {
-    if (drag) event.preventDefault();
+    if (drag || jarDrag) event.preventDefault();
   };
 
   canvas.addEventListener('touchstart', onTouchStart, { passive: false });
@@ -1147,6 +1203,21 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
 
   const physicsStep = () => {
     const J = layout.jar;
+    // 瓶子朝手指要它去的位置挪。它是运动学刚体，每步只挪一小段（限速）：
+    // 瓶壁和瓶底才推得动里面的玩具，一步跨太远玩具会直接从玻璃里穿出去
+    const jx = jarTarget.x - J.x;
+    const jy = jarTarget.y - J.y;
+    const gap = Math.hypot(jx, jy);
+    if (gap > 1e-4) {
+      const move = Math.min(gap * 0.24, JAR_SPEED * STEP) / gap;
+      J.x += jx * move;
+      J.y += jy * move;
+      jarVelX = (jx * move) / STEP;
+      jarRigid?.setNextKinematicTranslation({ x: J.x, y: J.y, z: J.z });
+      jarShift.set((J.x - jarHome.x) / view.width, (J.y - jarHome.y) / view.height);
+    } else {
+      jarVelX = 0;
+    }
     toys.forEach((toy) => {
       if (drag?.toy === toy) {
         const p = toy.body.translation();
@@ -1172,11 +1243,28 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
       const p = toy.body.translation();
       const v = toy.body.linvel();
       if (toy.mode === 'float') {
+        // 被拖着的瓶子兜住了（在瓶身里、卡在收口的瓶颈里、或者大半个陷在瓶口里）：
+        // 就算装进去了，交给重力，别再隔着玻璃往原位拽
+        const toyR = toy.baseScale * 0.45;
+        const fromJar = Math.hypot(p.x - J.x, p.z - J.z);
+        const rise = (p.y - J.y) / J.h;
+        const opening = rise < 0.7 ? 0.8 : rise < 0.97 ? 0.62 : 0.77;
+        if (rise > 0 && p.y < jarTop() + toyR * 0.6 && fromJar < J.r * opening) {
+          setMode(toy, 'jar');
+          return;
+        }
+        // 瓶子被挪到了它的原位上（原位落进玻璃里）：就浮到瓶子前面去，不然会一直顶着玻璃挤
+        let homeZ = toy.home.z;
+        const reach = J.r + toyR;
+        const dx = toy.home.x - J.x;
+        if (Math.abs(dx) < reach && toy.home.y > J.y - toyR && toy.home.y < jarTop() + toyR) {
+          homeZ = Math.max(homeZ, J.z + Math.sqrt(reach * reach - dx * dx) + 0.05);
+        }
         // 位置弹簧：浮回原位，带一点上下呼吸
         const bob = options.reducedMotion ? 0 : Math.sin(elapsed * 1.3 + toy.phase) * 0.07;
         const ax = (toy.home.x - p.x) * 7 - v.x * 3.1;
         const ay = (toy.home.y + bob - p.y) * 7 - v.y * 3.1;
-        const az = (toy.home.z - p.z) * 7 - v.z * 3.1;
+        const az = (homeZ - p.z) * 7 - v.z * 3.1;
         toy.body.setLinvel({ x: v.x + ax * STEP, y: v.y + ay * STEP, z: v.z + az * STEP }, true);
         // 姿态弹簧：慢慢摆回正面朝前，轻轻左右晃
         const sway = options.reducedMotion ? 0 : 1;
@@ -1309,6 +1397,7 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
         toy.prevPosition.set(p.x, p.y, p.z);
         toy.prevRotation.set(q.x, q.y, q.z, q.w);
       });
+      jarPrev.set(layout.jar.x, layout.jar.y);
       physicsStep();
       accumulator -= STEP;
     }
@@ -1356,7 +1445,14 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
     taglineMesh.position.y = layout.tagline.y + drift;
     ring.home.y = layout.logo.y + layout.logo.size * 0.36 + drift;
 
-    // 瓶子被点时晃一下
+    // 瓶子的位置和玩具一样在两个物理步之间插值
+    jar.position.set(
+      THREE.MathUtils.lerp(jarPrev.x, layout.jar.x, alpha),
+      THREE.MathUtils.lerp(jarPrev.y, layout.jar.y, alpha),
+      layout.jar.z,
+    );
+    // 瓶子被点时晃一下；拖着它横着走的时候瓶口往后仰一点（碰撞体跟着转，里面的玩具也会晃）
+    if (!reduce) jarWobbleVel += jarVelX * 30 * dt;
     jarWobbleVel += (-jarWobble * 120 - jarWobbleVel * 8) * dt;
     jarWobble += jarWobbleVel * dt;
     jar.rotation.z = jarWobble * 0.035;
@@ -1411,6 +1507,8 @@ export async function createHeroStage(canvas: HTMLCanvasElement, options: Option
         update(0, true);
         renderFrame();
       }
+      // 停着的时候整张画布是透明的：标出来让样式把它藏掉，合成器就不用每帧再混一层全屏透明图
+      canvas.dataset.active = String(value);
       renderer.setAnimationLoop(value ? loop : null);
     },
     dispose: () => {
