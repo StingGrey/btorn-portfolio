@@ -252,6 +252,8 @@ html[data-variant="glass"] {
 }
 
 .gl-stage {
+  /* 崩溃抖动的一份幅度：宽屏 1px，窄屏跟着视口宽度缩，手机上不至于整屏甩出去 */
+  --gl-shake: min(1px, 0.1vw);
   position: sticky;
   top: 0;
   height: 100svh;
@@ -259,6 +261,56 @@ html[data-variant="glass"] {
   overflow: hidden;
   isolation: isolate;
   background: var(--gl-white);
+}
+
+/* 蓝屏之前的最后一段：整个画面（电视、弹窗、底色）一拍一拍地乱跳，越来越凶。
+   舞台晃开时边上露出来的是 .gl-seq，这一段把它刷成电视房间四周的那种淡紫粉，看不出缝 */
+.gl-root:is([data-crash="soft"], [data-crash="hard"]) .gl-seq {
+  background: #f6e3f3;
+}
+
+.gl-root[data-crash="soft"] .gl-stage {
+  animation: gl-crash 620ms steps(1, end) infinite;
+}
+
+.gl-root[data-crash="hard"] .gl-stage {
+  animation: gl-crash-hard 300ms steps(1, end) infinite;
+}
+
+@keyframes gl-crash {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translate(calc(var(--gl-shake) * -6), calc(var(--gl-shake) * 2));
+  }
+  40% {
+    transform: translate(calc(var(--gl-shake) * 5), calc(var(--gl-shake) * -3)) skewX(-0.6deg);
+  }
+  60% {
+    transform: none;
+  }
+  80% {
+    transform: translate(calc(var(--gl-shake) * -3), 0);
+  }
+}
+
+/* 斜切比原来弹窗那层收了一半：整屏一斜，四个角甩得比一个窗口远得多 */
+@keyframes gl-crash-hard {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translate(calc(var(--gl-shake) * -16), calc(var(--gl-shake) * 6)) skewX(-1.5deg);
+  }
+  50% {
+    transform: translate(calc(var(--gl-shake) * 12), calc(var(--gl-shake) * -9)) scaleY(1.01);
+  }
+  75% {
+    transform: translate(calc(var(--gl-shake) * -8), calc(var(--gl-shake) * 3)) skewX(1deg);
+  }
 }
 
 .gl-layer {

@@ -12,49 +12,7 @@
   pointer-events: none;
 }
 
-/* 崩溃前的最后一段：整层跟着一拍一拍地乱跳，越来越凶 */
-.gl-layer-popups[data-crash="soft"][data-motion="full"] {
-  animation: gw-crash 620ms steps(1, end) infinite;
-}
-
-.gl-layer-popups[data-crash="hard"][data-motion="full"] {
-  animation: gw-crash-hard 300ms steps(1, end) infinite;
-}
-
-@keyframes gw-crash {
-  0%,
-  100% {
-    transform: none;
-  }
-  20% {
-    transform: translate(-6px, 2px);
-  }
-  40% {
-    transform: translate(5px, -3px) skewX(-1deg);
-  }
-  60% {
-    transform: none;
-  }
-  80% {
-    transform: translate(-3px, 0);
-  }
-}
-
-@keyframes gw-crash-hard {
-  0%,
-  100% {
-    transform: none;
-  }
-  25% {
-    transform: translate(-16px, 6px) skewX(-3deg);
-  }
-  50% {
-    transform: translate(12px, -9px) scaleY(1.02);
-  }
-  75% {
-    transform: translate(-8px, 3px) skewX(2deg);
-  }
-}
+/* 崩溃前那一段乱跳不在这一层：整个舞台（电视、弹窗、底色）一起跳，见 glass.css 里的 gl-crash */
 
 /* ---------- 一个窗口 ---------- */
 

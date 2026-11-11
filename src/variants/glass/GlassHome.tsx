@@ -437,6 +437,7 @@ export default function GlassHome() {
       data-phase={phase}
       data-nav={navHidden ? 'off' : navAway && !navPeek ? 'away' : 'on'}
       data-world={asciiWorld ? 'ascii' : 'glass'}
+      data-crash={reducedMotion ? 'off' : crash}
     >
       <Glass className="gl-nav" radius={999} bezel={14} refraction={28} blur={12}>
         <Logo href="#top" />
@@ -512,7 +513,6 @@ export default function GlassHome() {
                 layerRef={popupsRef}
                 count={popCount}
                 layout={popLayout}
-                crash={crash}
                 channel={tvState.channel}
                 power={tvState.power}
                 jarCount={jarCount}

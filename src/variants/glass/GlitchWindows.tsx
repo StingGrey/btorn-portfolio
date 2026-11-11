@@ -245,7 +245,6 @@ type Props = {
   count: number;
   /** 'side'：电视在左边；'up'：电视在上面 */
   layout: 'side' | 'up';
-  crash: 'off' | 'soft' | 'hard';
   channel: number;
   power: boolean;
   jarCount: number;
@@ -507,7 +506,6 @@ export const GlitchWindows = memo(function GlitchWindows({
   layerRef,
   count,
   layout,
-  crash,
   channel,
   power,
   jarCount,
@@ -608,7 +606,7 @@ export const GlitchWindows = memo(function GlitchWindows({
   );
 
   return (
-    <div className="gl-layer gl-layer-popups" ref={layerRef} data-crash={crash} data-motion={reducedMotion ? 'reduced' : 'full'}>
+    <div className="gl-layer gl-layer-popups" ref={layerRef} data-motion={reducedMotion ? 'reduced' : 'full'}>
       {POPUPS.map((def, index) => (
         <Popup
           key={def.id}
