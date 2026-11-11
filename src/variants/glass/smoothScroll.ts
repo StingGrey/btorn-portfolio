@@ -11,6 +11,24 @@ const WHEEL_SPEED = 0.55;
 const LERP = 0.085;
 
 let instance: Lenis | null = null;
+/** 页面上别的段落也可以要求放慢（取所有倍率里最慢的那个） */
+const extraSpeeds = new Set<() => number>();
+
+/** 注册一个额外的滚轮倍率，返回取消注册的函数 */
+export function addWheelSpeed(speedAt: () => number) {
+  extraSpeeds.add(speedAt);
+  return () => {
+    extraSpeeds.delete(speedAt);
+  };
+}
+
+const combinedSpeed = (speedAt: () => number) => {
+  let speed = speedAt();
+  extraSpeeds.forEach((extra) => {
+    speed = Math.min(speed, extra());
+  });
+  return speed;
+};
 
 /**
  * speedAt：当前位置的额外倍率（1 = 不额外放慢）。由页面自己根据滚动进度给出。
@@ -26,8 +44,9 @@ export function startSmoothScroll(speedAt: () => number) {
     anchors: true,
     virtualScroll: (data) => {
       if (data.event.type === 'wheel') {
-        data.deltaY *= speedAt();
-        data.deltaX *= speedAt();
+        const speed = combinedSpeed(speedAt);
+        data.deltaY *= speed;
+        data.deltaX *= speed;
       }
       return true;
     },

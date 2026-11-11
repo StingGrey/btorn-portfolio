@@ -1,0 +1,125 @@
+/* 页脚后面那一段：页脚钉住，画布盖在上面；读数是一个终端风格的小框。 */
+
+.gd-track {
+  position: relative;
+  background: #07060b;
+}
+
+.gd-pin {
+  position: sticky;
+  top: var(--gd-pin-top, 0px);
+}
+
+.gd-stage {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100vh;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  background: #07060b;
+}
+
+.gd-pin[data-diving="true"] .gd-stage {
+  visibility: visible;
+}
+
+/* 画布接手以后，真的页脚藏起来（还占着位置，滑回去时原地换回来） */
+.gd-pin[data-diving="true"] > .ga-end {
+  visibility: hidden;
+}
+
+.gd-host,
+.gd-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.gd-hud {
+  position: absolute;
+  left: max(16px, 2vw);
+  bottom: max(16px, 3vh);
+  max-width: min(600px, calc(100% - 32px));
+  padding: 10px 14px 12px;
+  font-family: "VT323", ui-monospace, monospace;
+  color: #e9e2f5;
+  background: rgb(7 6 11 / 0.8);
+  box-shadow: inset 0 0 0 1px #3a3350;
+  opacity: 0;
+  transition: opacity 320ms ease;
+}
+
+.gd-hud[data-show="true"] {
+  opacity: 1;
+}
+
+.gd-read {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+}
+
+.gd-read b {
+  font-weight: 400;
+  color: #ff8fbd;
+}
+
+.gd-scale {
+  color: #8fffc4;
+  font-variant-numeric: tabular-nums;
+}
+
+.gd-ruler {
+  margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1;
+  color: #7f769a;
+  white-space: pre;
+}
+
+.gd-cap {
+  margin: 8px 0 0;
+  font-size: 19px;
+  line-height: 1.2;
+  color: #b9add3;
+}
+
+/* 每换一站，说明一个字一个字打出来 */
+.gd-cap span {
+  opacity: 0;
+  animation: gd-char 1ms linear calc(var(--i) * 16ms) forwards;
+}
+
+@keyframes gd-char {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .gd-ruler {
+    display: none;
+  }
+
+  .gd-read {
+    font-size: 19px;
+  }
+
+  .gd-cap {
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gd-cap span {
+    opacity: 1;
+    animation: none;
+  }
+}

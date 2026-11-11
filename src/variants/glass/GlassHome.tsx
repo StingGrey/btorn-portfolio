@@ -9,8 +9,8 @@ import { DreamConsole } from '../../components/DreamConsole';
 import { Logo } from '../../components/Logo';
 import { assets } from '../../content/assets';
 import { prefersReducedMotion } from '../shared';
-import { AsciiEnd } from './AsciiEnd';
 import { ConsoleGlitch } from './ConsoleGlitch';
+import { DeepDive } from './dive/DeepDive';
 import { channels, consoleCopy, tagline } from './content';
 import { CrashScreen, type CrashHandle } from './CrashScreen';
 import { Glass } from './Glass';
@@ -573,7 +573,7 @@ export default function GlassHome() {
         reducedMotion={reducedMotion}
       />
 
-      <AsciiEnd reducedMotion={reducedMotion} />
+      <DeepDive reducedMotion={reducedMotion} forceWebGL={forceWebGL} />
     </div>
   );
 }

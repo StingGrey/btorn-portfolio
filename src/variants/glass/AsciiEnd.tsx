@@ -30,10 +30,28 @@ const LOGO = LOGO_LINES.map((text, index) => logoSegments(text, LOGO_TONES[index
 
 type Layout = { logoSize: number; boxCols: number };
 
-type Props = { reducedMotion: boolean };
+/** 底边上两个「-」各包一层，CSS 让它们一前一后掉下去，原地留个空 */
+function looseBorder(border: string) {
+  const first = Math.floor(border.length * 0.58);
+  const second = first + 3;
+  return (
+    <>
+      {border.slice(0, first)}
+      <span className="ga-loose">{border[first]}</span>
+      {border.slice(first + 1, second)}
+      <span className="ga-loose" style={{ '--d': '0.9s' } as CSSProperties}>
+        {border[second]}
+      </span>
+      {border.slice(second + 1)}
+    </>
+  );
+}
+
+/** loose：边框底边松掉两个字（掉下去），暗示页面还没完 */
+type Props = { reducedMotion: boolean; loose?: boolean };
 
 // 页面每秒都会因为电视的时间码重渲染一次：页脚的属性没变就别跟着重新对比那一大块字
-export const AsciiEnd = memo(function AsciiEnd({ reducedMotion }: Props) {
+export const AsciiEnd = memo(function AsciiEnd({ reducedMotion, loose = false }: Props) {
   const footerRef = useRef<HTMLElement | null>(null);
   const sideRef = useRef<HTMLDivElement | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
@@ -173,7 +191,7 @@ export const AsciiEnd = memo(function AsciiEnd({ reducedMotion }: Props) {
       'heal',
     ),
     ln(<span aria-hidden="true">{blank}</span>, 'b4'),
-    ln(<span aria-hidden="true">{border}</span>, 'bottom'),
+    ln(<span aria-hidden="true">{loose ? looseBorder(border) : border}</span>, 'bottom'),
   ];
   const fineIndex = line++;
 
