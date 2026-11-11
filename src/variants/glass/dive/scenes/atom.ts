@@ -1,28 +1,13 @@
 // 原子以下：硅原子的电子云 → 原子里的空旷 → 原子核 → 质子（三个夸克、胶子流管、海夸克）→
-// 一个夸克（一个点，周围的虚粒子往外飞）→ 16 个数量级的未知 → 张开成一根振动的弦 → 普朗克尺度的时空泡沫。
+// 一个夸克（一个点，周围的虚粒子往外飞）→ 16 个数量级的未知 → 张开成一根振动的弦。
+// 再往下的普朗克尺度泡沫，以及从那里接上的大爆炸，在 cosmos.ts。
 
 import { G, RAMP, lineGlyph } from '../charset';
-import { BG, hash1, hash2, noise2, put, smooth, tint, walk, type Grid } from '../grid';
+import { BG, clock, hash1, hash2, noise2, put, smooth, tint, walk, type Grid } from '../grid';
 import { INK, callout, legend, note, status, type Rgb } from '../notes';
 import { logScaleAt } from '../timeline';
 
 const fovIn = (zz: number, unit: number) => 10 ** logScaleAt(zz) / unit;
-
-/**
- * 有些东西要「慢慢停下来」（原子核转着转着停住、夸克越绕越慢）：直接拿时间乘一个跟着滚动变的倍率会跳，
- * 所以每帧把走过的时间乘上倍率累加起来。
- */
-function clock() {
-  let last = NaN;
-  let phase = 0;
-  return (g: Grid, rate: number) => {
-    if (g.reduced) return 0;
-    const dt = Number.isNaN(last) ? 0 : Math.min(Math.max(g.time - last, 0), 0.1);
-    last = g.time;
-    phase += dt * rate;
-    return phase;
-  };
-}
 
 /** 一格的「概率云」：值越大字越密；中间那段用随机撒点，看起来是一团闪烁的可能性 */
 function cloud(g: Grid, i: number, v: number, frame: number, r: number, gr: number, b: number) {
@@ -534,67 +519,4 @@ export function drawString(g: Grid, zz: number) {
   const show = smooth(928, 940, zz);
   callout(g, radius * 0.78, radius * 0.64, radius * 0.78 + 0.2, radius * 0.64 + 0.16, 'a loop of string', [255, 190, 215], show);
   status(g, 'how it vibrates would decide which particle it is', [200, 180, 240], show);
-}
-
-/* ====================== 普朗克尺度：时空泡沫 ====================== */
-
-export function drawFoam(g: Grid, zz: number) {
-  const t = g.reduced ? 0 : g.time;
-  const frame = g.reduced ? 0 : Math.floor(t * 8);
-  // 泡沫在哪个尺度看都差不多乱：不再跟着放大，只是慢慢地一胀一缩
-  const scale = 3.2 * (1 + 0.08 * Math.sin(t * 0.35)) * (1 + 0.04 * (zz - 960) / 100);
-  // 噪声隔一列算一次（两格共用），省一半时间
-  for (let y = 0; y < g.rows; y += 1) {
-    // 「距离」在这里不太靠得住：时不时有几行整行错开
-    const tear = hash2(y, frame) < 0.08 ? (hash2(frame, y) - 0.5) * 0.25 : 0;
-    for (let x = 0; x < g.cols; x += 2) {
-      const jitter = (hash2(x + y * 977, frame) - 0.5) * 0.05 + tear;
-      const px = g.ox[x] * scale + jitter;
-      const py = g.oy[y] * scale;
-      const qx1 = noise2(px * 1.7 + t * 0.35, py * 1.7);
-      const qy1 = noise2(px * 1.7 + 5.2, py * 1.7 - t * 0.3);
-      const wx = px + 1.6 * qx1;
-      const wy = py + 1.6 * qy1;
-      const n = noise2(wx * 2.2 - t * 0.25, wy * 2.2 + t * 0.2);
-      const m = noise2(wx * 4.4 + 7, wy * 4.4 - t * 0.5);
-      // 泡泡的壁：噪声接近 0.5 的地方是一条亮线
-      const ridge = 1 - Math.abs(2 * n - 1);
-      const wall = ridge ** 8;
-      const v = Math.min(1, wall * 1.25 + m * 0.1);
-      for (let c = x; c < Math.min(x + 2, g.cols); c += 1) {
-        const i = y * g.cols + c;
-        if (v < 0.1) continue;
-        const pink = smooth(0.35, 0.75, m);
-        const r = 170 + 85 * v;
-        const gr = (150 + 105 * v) * (1 - pink * 0.55);
-        const b = 220 + 35 * v;
-        if (wall > 0.5) {
-          put(g, i, lineGlyph(-(qy1 - 0.5), qx1 - 0.5), r, gr, b);
-          tint(g, i, 46 * v, 30 * v, 58 * v);
-        } else {
-          put(g, i, RAMP[Math.min(9, 1 + Math.floor(v * 9))], r * 0.62, gr * 0.55, b * 0.75);
-        }
-      }
-    }
-  }
-  // 冒出来又消失的小涨落
-  for (let k = 0; k < 18; k += 1) {
-    if (hash2(k, frame) > 0.5) continue;
-    const sx = (hash2(frame, k + 1) - 0.5) * g.aspect;
-    const sy = (hash2(k + 5, frame * 3) - 0.5) * g.half * 2;
-    walk(g, sx, sy, sx, sy, (i) => put(g, i, hash2(k, frame + 1) < 0.5 ? G.star : G.plus, 255, 220, 240));
-  }
-  // 一把量不准的尺子：刻度自己在乱跳
-  const row = Math.floor(g.rows * 0.2);
-  const from = Math.floor(g.cols * 0.3);
-  const to = Math.floor(g.cols * 0.7);
-  let next = from;
-  for (let c = from; c <= to; c += 1) {
-    const tick = c === next;
-    if (tick) next = c + 4 + Math.floor(hash2(c, frame >> 1) * 9);
-    const i = (row + (hash2(c, frame) < 0.06 ? 1 : 0)) * g.cols + c;
-    put(g, i, tick ? G.pipe : G.dash, 255, 143, 189);
-    tint(g, i, 12, 10, 20);
-  }
-  note(g, 0, g.half - (row - 1.5) * g.ch, 'a ruler stops working here', [255, 190, 215]);
 }

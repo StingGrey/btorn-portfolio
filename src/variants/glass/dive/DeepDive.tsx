@@ -5,17 +5,33 @@ import type { Portrait } from '../portrait';
 import type { FrameOut, Grids } from './director';
 import { hash1, screenUnit, twin } from './grid';
 import type { DiveRenderer } from './renderer';
-import { SCROLL, STATIONS, formatScale, storyAt } from './timeline';
+import { REACH_MAX, SCROLL, STATIONS, TIME_FIRST, TIME_NOW, formatReach, formatScale, formatTime, readoutOf, storyAt, type Readout } from './timeline';
 
 /**
  * ASCII 页脚，以及页脚后面「一直往下滑」的那一段：页脚的字一列列掉光、裂开、炸掉，剩一颗粉色的 O，
- * 然后镜头一路放大到普朗克尺度。页脚钉在屏幕上（sticky），这一段的画面盖在它上面的一块画布里。
+ * 然后镜头一路放大到普朗克尺度；再小下去没有意义了，读数翻成时间，从大爆炸一路走到太阳、地球和今天的你，
+ * 最后读数翻回尺度，从你身上一路拉远到宇宙网。
+ * 页脚钉在屏幕上（sticky），这一段的画面盖在它上面的一块画布里。
  * 画布和场景代码都等页脚快露出来了才加载；往回滑一切照原样倒回去，滑到页脚就把真的页脚换回来。
  */
 
 type Props = { reducedMotion: boolean; forceWebGL: boolean };
 
 const RULER = 36;
+/** 读数换样子（尺度 → 时间 → 尺度）的那一下：字乱跳多久（毫秒） */
+const FLIP_MS = 420;
+const NOISE = '#%&@$?!<>/\\|=+*01';
+
+/** 翻面时把读数的字随机换掉一大半（空格和括号留着，看得出是同一行） */
+function scramble(text: string, now: number) {
+  const beat = Math.floor(now / 45);
+  let out = '';
+  for (let k = 0; k < text.length; k += 1) {
+    const ch = text[k];
+    out += ch === ' ' || ch === '[' || ch === ']' || hash1(beat * 131 + k) < 0.35 ? ch : NOISE[Math.floor(hash1(beat * 977 + k * 7) * NOISE.length)];
+  }
+  return out;
+}
 
 export function DeepDive({ reducedMotion, forceWebGL }: Props) {
   const trackRef = useRef<HTMLElement | null>(null);
@@ -94,6 +110,8 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
     let lastHud = false;
     let lastScale = '';
     let lastRuler = '';
+    let lastMode: Readout = 'zoom';
+    let flipUntil = 0;
     let shaking = false;
     // 标注：一批复用的小标签和引线，每帧只改位置、文字和透明度
     const noteEls: HTMLSpanElement[] = [];
@@ -216,7 +234,7 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
       stale = false;
     };
 
-    const showHud = (show: boolean, index: number, log: number) => {
+    const showHud = (show: boolean, index: number, log: number, mode: Readout, now: number) => {
       if (show !== lastHud) {
         lastHud = show;
         setHud(show);
@@ -226,13 +244,28 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
         lastStation = index;
         setStation(index);
       }
-      const scale = formatScale(log);
+      // 尺度翻成时间、时间又翻回尺度（或者往回滑翻回来）：读数和尺子先乱跳一下
+      if (mode !== lastMode) {
+        lastMode = mode;
+        flipUntil = reducedMotion ? 0 : now + FLIP_MS;
+      }
+      const flipping = now < flipUntil;
+      const value = mode === 'clock' ? formatTime(log) : mode === 'reach' ? formatReach(log) : formatScale(log);
+      const scale = flipping ? scramble(value, now) : value;
       if (scale !== lastScale && scaleRef.current) {
         lastScale = scale;
         scaleRef.current.textContent = scale;
       }
-      const at = Math.min(RULER - 1, Math.max(0, Math.floor(-log)));
-      const ruler = `${'='.repeat(at)}>${'.'.repeat(RULER - 1 - at)}`;
+      // 比例尺：一格一个数量级（1 m → 10^-35 m）；时间尺：从普朗克时间到今天；往外拉：1 m → 10^26 m
+      const at =
+        mode === 'clock'
+          ? Math.round(((log - TIME_FIRST) / (TIME_NOW - TIME_FIRST)) * (RULER - 1))
+          : mode === 'reach'
+            ? Math.round((log / REACH_MAX) * (RULER - 1))
+            : Math.floor(-log);
+      const clamped = Math.min(RULER - 1, Math.max(0, at));
+      const bar = `${'='.repeat(clamped)}>${'.'.repeat(RULER - 1 - clamped)}`;
+      const ruler = flipping ? scramble(bar, now + 200) : bar;
       if (ruler !== lastRuler && rulerRef.current) {
         lastRuler = ruler;
         rulerRef.current.textContent = ruler;
@@ -255,7 +288,7 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
           shaking = false;
           syncNotes(null);
         }
-        showHud(false, 0, 0);
+        showHud(false, 0, 0, lastMode, now);
         return;
       }
       if (stale) recapture();
@@ -278,7 +311,7 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
         shaking = false;
       }
       syncNotes(out.notes);
-      showHud(out.hud.show, out.hud.station, out.hud.log);
+      showHud(out.hud.show, out.hud.station, out.hud.log, out.hud.mode, now);
       // 在这一段里一直画（大多数场景自己会动）；滑出去就停
       frame = requestAnimationFrame(tick);
     };
@@ -347,6 +380,7 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
   }, [forceWebGL, reducedMotion]);
 
   const current = STATIONS[station];
+  const mode = readoutOf(current);
   return (
     <section
       className="gd-track"
@@ -358,14 +392,14 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
         <div className="gd-stage" ref={stageRef} aria-hidden="true">
           <div className="gd-host" ref={hostRef} />
           <div className="gd-notes" ref={notesRef} />
-          <div className="gd-hud" data-show={hud}>
+          <div className="gd-hud" data-show={hud} data-mode={mode}>
             <p className="gd-read">
-              <span>SCALE </span>
+              <span>{mode === 'clock' ? 'TIME ' : 'SCALE '}</span>
               <span className="gd-scale" ref={scaleRef} />
               <b> » {current.label}</b>
             </p>
             <p className="gd-ruler">
-              1 m [<span ref={rulerRef} />] 10^-35
+              {mode === 'clock' ? '0 s' : '1 m'} [<span ref={rulerRef} />] {mode === 'clock' ? '13.8 Gyr' : mode === 'reach' ? '10^26 m' : '10^-35'}
             </p>
             <p className="gd-cap" key={station}>
               {[...current.caption].map((ch, index) => (
@@ -379,7 +413,7 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
       </div>
       {!failed && (
         <div className="sr-only">
-          <h2>Keep scrolling: from the last pink pixel down to the Planck length</h2>
+          <h2>Keep scrolling: from the last pink pixel down to the Planck length, then from the Big Bang to you, and out to the cosmic web</h2>
           <ol>
             {STATIONS.map((item) => (
               <li key={item.z}>

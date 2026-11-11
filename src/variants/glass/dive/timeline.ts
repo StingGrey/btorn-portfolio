@@ -1,6 +1,9 @@
 // 结尾这一段的时间轴。位置都按「这一段滚过的距离」写，单位是 svh（一屏高）。
 // 开场：页脚的字一列列掉光 → 黑屏上冒出三处裂纹 → 三道裂纹爬向粉色的 O → O 往里一收、炸开 → 只剩一颗粉色的 O。
 // 然后是放大（zz 从 ZOOM_START 算起）：每一站在 STATIONS 里，读数（视野有多高）按 SCALE_KEYS 走。
+// 放大到普朗克尺度以后再小下去没有意义了，读数从 CLOCK_FROM 那一站起翻成「宇宙多少岁」（TIME_KEYS），
+// 从大爆炸一路走到太阳和地球、走到今天；从 REACH_FROM 那一站起镜头从你身上往外拉，读数又翻回尺度，
+// 这回越来越大（PULL_KEYS），一直拉到宇宙网。
 
 
 export const FALL_END = 72;
@@ -15,7 +18,7 @@ export const CONVERGE: [number, number] = [104, 134];
 export const GATHER: [number, number] = [128, 146];
 export const BOOM: [number, number] = [140, 174];
 export const ZOOM_START = 182;
-export const ZOOM_LEN = 1060;
+export const ZOOM_LEN = 1880;
 export const TRACK = ZOOM_START + ZOOM_LEN;
 
 /**
@@ -60,7 +63,40 @@ export const PACE: [number, number][] = [
   [2230, Z + 865],
   [2295, Z + 905],
   [2405, Z + 960],
-  [2545, TRACK],
+  // 读数翻成时间：再小下去没有意义了，但还能更早；四种力一股股分家
+  [2475, Z + 1000],
+  [2550, Z + 1030],
+  [2650, Z + 1058],
+  // 暴胀，然后整屏同时烧起来
+  [2760, Z + 1100],
+  [2830, Z + 1120],
+  // 希格斯场 → 夸克汤 → 物质赢过反物质 → 质子 → 中微子 → 氢和氦
+  [2920, Z + 1148],
+  [3000, Z + 1174],
+  [3100, Z + 1200],
+  [3180, Z + 1228],
+  [3260, Z + 1256],
+  [3340, Z + 1284],
+  // 雾散开，微波背景多停一会儿
+  [3420, Z + 1324],
+  [3510, Z + 1374],
+  // 黑暗时代 → 暗物质 → 第一批恒星 → 再电离
+  [3580, Z + 1404],
+  [3670, Z + 1442],
+  [3770, Z + 1480],
+  [3860, Z + 1518],
+  // 星系 → 相撞 → 银河系
+  [3940, Z + 1556],
+  [4060, Z + 1606],
+  [4160, Z + 1646],
+  // 太阳 → 地球 → 今天
+  [4260, Z + 1680],
+  [4350, Z + 1712],
+  [4420, Z + 1724],
+  // 一路拉远，最后停在宇宙网
+  [4640, Z + 1798],
+  [4740, Z + 1830],
+  [4900, TRACK],
 ];
 /** 这一段一共要滑多远（svh） */
 export const SCROLL = PACE[PACE.length - 1][0];
@@ -79,7 +115,16 @@ export const SHOTS = [
   { key: 'proton', from: 775, to: 830 },
   { key: 'quark', from: 830, to: 905 },
   { key: 'string', from: 905, to: 960 },
-  { key: 'foam', from: 960, to: ZOOM_LEN },
+  { key: 'foam', from: 960, to: 1062 },
+  { key: 'inflation', from: 1062, to: 1120 },
+  { key: 'soup', from: 1120, to: 1282 },
+  { key: 'fog', from: 1282, to: 1377 },
+  { key: 'dark', from: 1377, to: 1520 },
+  { key: 'web', from: 1520, to: 1556 },
+  { key: 'merger', from: 1556, to: 1606 },
+  { key: 'milkyway', from: 1606, to: 1646 },
+  { key: 'sun', from: 1646, to: 1724 },
+  { key: 'pullback', from: 1724, to: ZOOM_LEN },
 ] as const;
 export type ShotKey = (typeof SHOTS)[number]['key'];
 /** 交界处溶解的半宽 */
@@ -110,7 +155,42 @@ export const STATIONS: Station[] = [
   { z: 865, label: '???', caption: 'Zooming past everything anyone has ever measured.' },
   { z: 905, label: 'STRING?', caption: "String theory says it's all tiny vibrating strings. Nobody has seen one. Yet." },
   { z: 960, label: 'PLANCK LENGTH', caption: "1.6 × 10^-35 m. Below this, 'smaller' may stop meaning anything." },
+  // 从这一站起，读数是宇宙的年龄
+  { z: 1000, label: 'THE FIRST INSTANT', caption: "You can't go smaller. You can go earlier. Everything you can see was once tinier than a proton." },
+  { z: 1030, label: 'ONE FORCE', caption: 'Gravity, the strong force, the weak force and electromagnetism may once have been one force. They split off one by one.' },
+  { z: 1064, label: 'INFLATION', caption: 'Space itself stretches, everywhere at once: 100 trillion trillion times, in a blink. No center.' },
+  { z: 1104, label: 'THE HOT BIG BANG', caption: "Inflation stops and its energy turns into heat, everywhere at the same time. That's the bang." },
+  { z: 1126, label: 'THE HIGGS FIELD', caption: 'The Higgs field switches on, everywhere at once. Particles that zipped at light speed suddenly have mass.' },
+  { z: 1152, label: 'QUARK SOUP', caption: 'Trillions of degrees. Quarks, antiquarks and gluons in one hot soup, too hot to stick together.' },
+  { z: 1178, label: 'MATTER WINS', caption: "Matter and antimatter wipe each other out in flashes of light. A tiny bit of matter is left over. That's us." },
+  { z: 1204, label: 'PROTONS', caption: 'It cools. Quarks huddle in threes: protons and neutrons, like the one we flew through.' },
+  { z: 1232, label: 'NEUTRINOS', caption: 'One second in: neutrinos stop bumping into things and fly off. They are still flying today.' },
+  { z: 1260, label: 'FIRST NUCLEI', caption: 'Three minutes in: hydrogen and helium. Almost everything else in you gets made later, in stars.' },
+  { z: 1287, label: 'THE FOG', caption: 'For 380,000 years, a glowing fog. Light keeps bumping into free electrons and gets nowhere.' },
+  { z: 1327, label: 'FIRST LIGHT', caption: 'Atoms form and the fog clears. That light still fills the sky: the cosmic microwave background.' },
+  { z: 1377, label: 'DARK AGES', caption: 'Then darkness. No stars yet, just cooling gas.' },
+  { z: 1408, label: 'DARK MATTER', caption: 'Most matter is dark: it gives off no light, but its gravity pulls first. The gas falls into its web.' },
+  { z: 1446, label: 'FIRST STARS', caption: 'The first stars switch on: huge, hot and blue. The biggest explode within a few million years.' },
+  { z: 1484, label: 'REIONIZATION', caption: 'Starlight blows bubbles in the leftover gas. They grow and merge until the last of the fog is gone.' },
+  { z: 1522, label: 'GALAXIES', caption: 'Stars gather into galaxies. Galaxies gather along the threads.' },
+  { z: 1558, label: 'GALAXY COLLISION', caption: 'Galaxies grow by colliding. Their stars almost never hit each other, but gravity flings out long tails of them.' },
+  { z: 1608, label: 'THE MILKY WAY', caption: 'Ours settles into a barred spiral: the Milky Way, a few hundred billion stars.' },
+  { z: 1648, label: 'THE SUN', caption: '4.6 billion years ago, a cloud of gas and dust collapses. Its middle gets hot enough to fuse hydrogen: the Sun.' },
+  { z: 1680, label: 'EARTH', caption: 'Dust in the disk around it clumps into planets. The third one from the Sun is ours.' },
+  { z: 1716, label: 'TODAY', caption: '4.5 billion years later: today. Somewhere down there, you are reading this.' },
+  // 从这一站起，读数又是尺度：从你身上往外拉
+  { z: 1726, label: 'ZOOMING OUT', caption: 'Now the other way: from you, out to as far as anyone can see.' },
+  { z: 1802, label: 'DARK ENERGY', caption: "Everything out here is drifting apart, faster and faster. That's dark energy. Nobody knows what it is yet." },
+  { z: 1834, label: 'THE COSMIC WEB', caption: '13.8 billion years after the first instant: the cosmic web. The biggest thing there is looks a lot like the smallest.' },
 ];
+
+/** 从这一站起，左下角的读数不再是「视野多高」，而是「宇宙多少岁」 */
+export const CLOCK_FROM = 1000;
+/** 从这一站起，读数又是视野多高（这回是往外拉，越来越大） */
+export const REACH_FROM = 1726;
+/** 左下角读数的三种样子：往里钻的尺度、宇宙的年龄、往外拉的尺度 */
+export type Readout = 'zoom' | 'clock' | 'reach';
+export const readoutOf = (station: Station): Readout => (station.z >= REACH_FROM ? 'reach' : station.z >= CLOCK_FROM ? 'clock' : 'zoom');
 
 /** 视野有多高（log10 米）随 zz 怎么走；中间按直线插 */
 export const SCALE_KEYS: [number, number][] = [
@@ -158,10 +238,114 @@ export function interpolate(keys: [number, number][], x: number) {
 /** 放大到 zz 时，视野高多少米（取 log10） */
 export const logScaleAt = (zz: number) => interpolate(SCALE_KEYS, zz);
 
+const YEAR = 3.156e7;
+/** 普朗克时间（5.4e-44 s）和今天（138 亿年），取 log10 秒：时间那把尺子的两头 */
+export const TIME_FIRST = Math.log10(5.39e-44);
+export const TIME_NOW = Math.log10(13.8e9 * YEAR);
+
+/** 宇宙多少岁（log10 秒）随 zz 怎么走；中间按直线插 */
+export const TIME_KEYS: [number, number][] = [
+  [CLOCK_FROM, TIME_FIRST],
+  // 四种力分家：引力在普朗克时间前后，强力在 10^-36 s
+  [1030, TIME_FIRST],
+  [1040, -42.6],
+  [1050, -36.5],
+  [1056, -36],
+  // 暴胀：10^-36 s 到 10^-32 s
+  [1064, -36],
+  [1098, -32],
+  [1114, -31.6],
+  // 希格斯场：10^-12 s
+  [1126, -13],
+  [1140, -11.6],
+  // 夸克汤 → 物质赢过反物质：百万分之一秒
+  [1152, -10],
+  [1176, -6.2],
+  [1196, -5],
+  // 质子和中子 → 中微子飞走：一秒
+  [1204, -4.6],
+  [1222, -1],
+  [1232, 0],
+  [1256, 1],
+  // 氢和氦：头二十分钟
+  [1260, Math.log10(180)],
+  [1276, Math.log10(1200)],
+  // 雾：五万年 → 三十八万年（雾散开），之后停在这一刻多看一会儿
+  [1287, Math.log10(5e4 * YEAR)],
+  [1327, Math.log10(3.8e5 * YEAR)],
+  [1359, Math.log10(3.8e5 * YEAR)],
+  // 黑暗时代 → 暗物质 → 第一批恒星（一两亿年）→ 再电离（十亿年）
+  [1377, Math.log10(1e7 * YEAR)],
+  [1408, Math.log10(6e7 * YEAR)],
+  [1446, Math.log10(1.8e8 * YEAR)],
+  [1484, Math.log10(5e8 * YEAR)],
+  [1514, Math.log10(1e9 * YEAR)],
+  // 星系 → 相撞 → 银河系
+  [1522, Math.log10(1.2e9 * YEAR)],
+  [1556, Math.log10(2.5e9 * YEAR)],
+  [1558, Math.log10(3e9 * YEAR)],
+  [1602, Math.log10(5e9 * YEAR)],
+  [1608, Math.log10(6e9 * YEAR)],
+  [1640, Math.log10(9e9 * YEAR)],
+  // 太阳（46 亿年前）→ 地球 → 一跳四十五亿年：今天
+  [1648, Math.log10(9.15e9 * YEAR)],
+  [1680, Math.log10(9.25e9 * YEAR)],
+  [1712, Math.log10(9.3e9 * YEAR)],
+  [1720, TIME_NOW],
+];
+
+/** 放大到 zz 时，宇宙多少岁（log10 秒） */
+export const timeAt = (zz: number) => interpolate(TIME_KEYS, zz);
+
+/** 往外拉的时候屏幕有多高（log10 米）：地球 → 月球 → 太阳 → 太阳系 → 最近的恒星 → 银河系 → 本星系群 → 宇宙网 */
+export const PULL_KEYS: [number, number][] = [
+  // 先停在今天那颗地球上，等上一段溶解完再开始拉
+  [1726, 7.35],
+  [1734, 7.35],
+  [1740, 9.3],
+  [1749, 11.7],
+  [1758, 13.4],
+  [1768, 16.9],
+  [1779, 20.4],
+  [1788, 22.6],
+  [1798, 25],
+];
+/** 往外拉到 zz 时，屏幕有多高（log10 米） */
+export const reachAt = (zz: number) => interpolate(PULL_KEYS, zz);
+/** 往外拉那把尺子的右端：10^26 m（看得见的宇宙差不多这么大） */
+export const REACH_MAX = 26;
+
+const AU = 1.496e11;
+const LIGHT_YEAR = 9.461e15;
+
+/** 很大的距离写成读数：公里、天文单位、光年，再大就是百万光年、十亿光年 */
+export function formatReach(log: number) {
+  const meters = 10 ** log;
+  const round = (v: number) => Number(v.toPrecision(3)).toLocaleString('en-US');
+  if (meters < 1e3) return `${round(meters)} m`;
+  if (meters < 1e10) return `${round(meters / 1e3)} km`;
+  if (meters < 0.05 * LIGHT_YEAR) return `${round(meters / AU)} AU`;
+  const years = meters / LIGHT_YEAR;
+  if (years < 1e6) return `${round(years)} ly`;
+  if (years < 1e9) return `${(years / 1e6).toFixed(years < 1e7 ? 1 : 0)} Mly`;
+  return `${(years / 1e9).toFixed(1)} Gly`;
+}
+
 export function stationAt(zz: number) {
   let index = 0;
   for (let k = 0; k < STATIONS.length; k += 1) if (zz >= STATIONS[k].z) index = k;
   return index;
+}
+
+/** 科学计数：1.6e-35；尾数四舍五入到 10.0 时进一位（不写成 10.0e-35） */
+function scientific(log: number) {
+  let exponent = Math.floor(log);
+  let mantissa = 10 ** (log - exponent);
+  if (mantissa >= 9.95) {
+    mantissa /= 10;
+    exponent += 1;
+  }
+  return `${mantissa.toFixed(1)}e${exponent}`;
 }
 
 const PREFIXES: [number, string][] = [
@@ -185,9 +369,40 @@ export function formatScale(log: number) {
       return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${unit}`;
     }
   }
-  const exponent = Math.floor(log);
-  const mantissa = 10 ** (log - exponent);
-  return `${mantissa.toFixed(1)}e${exponent} m`;
+  return `${scientific(log)} m`;
+}
+
+const TIME_PREFIXES: [number, string][] = [
+  [-3, 'ms'],
+  [-6, 'µs'],
+  [-9, 'ns'],
+  [-12, 'ps'],
+  [-15, 'fs'],
+  [-18, 'as'],
+  [-21, 'zs'],
+  [-24, 'ys'],
+];
+
+/** 把 log10 秒写成读数：很短就用 SI 前缀或科学计数（5.4e-44 s），长了换成分钟、年、百万年、十亿年 */
+export function formatTime(log: number) {
+  if (log < 0) {
+    for (const [exponent, unit] of TIME_PREFIXES) {
+      if (log >= exponent) {
+        const value = 10 ** (log - exponent);
+        return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${unit}`;
+      }
+    }
+    return `${scientific(log)} s`;
+  }
+  const seconds = 10 ** log;
+  if (seconds < 60) return `${seconds.toFixed(seconds < 10 ? 1 : 0)} s`;
+  if (seconds < 3600) return `${(seconds / 60).toFixed(seconds < 600 ? 1 : 0)} min`;
+  if (seconds < 86400) return `${(seconds / 3600).toFixed(1)} h`;
+  const years = seconds / YEAR;
+  if (years < 1) return `${Math.round(seconds / 86400)} days`;
+  if (years < 1e6) return `${Number(years.toPrecision(3)).toLocaleString('en-US')} yr`;
+  if (years < 1e9) return `${(years / 1e6).toFixed(years < 1e7 ? 1 : 0)} Myr`;
+  return `${(years / 1e9).toFixed(1)} Gyr`;
 }
 
 /** 滑了 scroll（svh）以后，故事走到哪了 */

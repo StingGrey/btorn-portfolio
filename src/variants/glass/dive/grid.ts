@@ -179,6 +179,22 @@ export function fbm2(x: number, y: number, octaves = 4) {
   return sum / norm;
 }
 
+/**
+ * 有些东西要「慢慢停下来」（原子核转着转着停住、夸克越绕越慢、泡沫定住）：直接拿时间乘一个跟着滚动变的倍率会跳，
+ * 所以每帧把走过的时间乘上倍率累加起来。减少动效时一直是 0。
+ */
+export function clock() {
+  let last = NaN;
+  let phase = 0;
+  return (g: Grid, rate: number) => {
+    if (g.reduced) return 0;
+    const dt = Number.isNaN(last) ? 0 : Math.min(Math.max(g.time - last, 0), 0.1);
+    last = g.time;
+    phase += dt * rate;
+    return phase;
+  };
+}
+
 export const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 export const smooth = (a: number, b: number, x: number) => {
   const t = clamp01((x - a) / (b - a));
