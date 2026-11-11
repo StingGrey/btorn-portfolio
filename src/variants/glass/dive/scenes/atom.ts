@@ -3,6 +3,7 @@
 
 import { G, RAMP, lineGlyph } from '../charset';
 import { BG, hash1, hash2, noise2, put, smooth, tint, walk, type Grid } from '../grid';
+import { INK, callout, legend, note, status, type Rgb } from '../notes';
 import { logScaleAt } from '../timeline';
 
 const fovIn = (zz: number, unit: number) => 10 ** logScaleAt(zz) / unit;
@@ -25,14 +26,15 @@ function clock() {
 
 /** 一格的「概率云」：值越大字越密；中间那段用随机撒点，看起来是一团闪烁的可能性 */
 function cloud(g: Grid, i: number, v: number, frame: number, r: number, gr: number, b: number) {
-  if (v > 0.72) {
-    put(g, i, RAMP[Math.min(9, 6 + Math.floor((v - 0.72) * 12))], r, gr, b);
+  if (v > 0.62) {
+    put(g, i, RAMP[Math.min(9, 6 + Math.floor((v - 0.62) * 10))], r, gr, b);
     tint(g, i, r * 0.18, gr * 0.18, b * 0.22);
     return;
   }
   const p = hash2(i, frame);
-  if (p > v * 1.35) return;
-  put(g, i, v > 0.4 ? G.colon : p < v * 0.5 ? G.mid : G.dot, r * (0.45 + v), gr * (0.45 + v), b * (0.5 + v * 0.5));
+  if (p > v * 1.7) return;
+  const k = 0.55 + v;
+  put(g, i, v > 0.42 ? G.star : v > 0.25 ? G.plus : v > 0.12 ? G.colon : G.dot, r * k, gr * k, b * k);
 }
 
 /* ====================== 硅原子 + 原子里的空旷 ====================== */
@@ -56,8 +58,13 @@ function electronDensity(x: number, y: number, c2: number, s2: number) {
   const second = r < 70 ? Math.exp(-(((r - 20) / 12) ** 2)) * 0.8 : 0;
   const cos2 = r2 > 1 ? ((x * x - y * y) * c2 + 2 * x * y * s2) / r2 : 0;
   const valence = Math.exp(-(((r - 95) / 45) ** 2)) * 0.3 * (1 + 0.85 * cos2);
+  shell[0] += core;
+  shell[1] += second;
+  shell[2] += valence;
   return core + second + valence;
 }
+/** 上面算出来的密度分别来自哪一层（内层、第二层、最外层），上色用 */
+const shell = [0, 0, 0];
 
 export function drawAtom(g: Grid, zz: number) {
   const fov = fovIn(zz, 1e-12);
@@ -76,6 +83,9 @@ export function drawAtom(g: Grid, zz: number) {
       for (let x = 0; x < g.cols; x += 1) {
         const wx = g.ox[x] * fov;
         const i = y * g.cols + x;
+        shell[0] = 0;
+        shell[1] = 0;
+        shell[2] = 0;
         let v = electronDensity(wx, wy, c2, s2);
         if (fov > 150) {
           // 远一点还看得见邻居和它们之间的共价键
@@ -90,8 +100,12 @@ export function drawAtom(g: Grid, zz: number) {
         }
         v = Math.min(1, v * 0.9) * fade;
         if (v < 0.02) continue;
-        const k = Math.min(1, v * 1.3);
-        cloud(g, i, v, frame, 110 + 145 * k * k, 220 + 35 * k, 255);
+        // 内层偏暖白、第二层青、最外层蓝紫：一眼分得出三层
+        const total = shell[0] + shell[1] + shell[2] + 1e-6;
+        const a = shell[0] / total;
+        const b = shell[1] / total;
+        const c = shell[2] / total;
+        cloud(g, i, v, frame, 255 * a + 110 * b + 150 * c, 240 * a + 236 * b + 160 * c, 205 * a + 255 * b + 255 * c);
       }
     }
   }
@@ -111,8 +125,15 @@ export function drawAtom(g: Grid, zz: number) {
     ];
     if (nucleusR / fov < g.ch) {
       marks.forEach(([dx, dy, glyph]) => walk(g, dx * g.cw, dy * g.ch, dx * g.cw, dy * g.ch, (i) => put(g, i, glyph, 255, 143, 189)));
+      note(g, 0, g.ch * 4, 'the nucleus is in here somewhere', [255, 143, 189], 0.5, 1 - fade);
     }
   }
+  // 标注：三层电子各在哪
+  const band = (lo: number, hi: number) => smooth(lo * 0.8, lo, fov) * (1 - smooth(hi, hi * 1.25, fov));
+  const cyan: Rgb = [150, 235, 255];
+  callout(g, (95 * Math.cos(spin)) / fov, (95 * Math.sin(spin)) / fov, 0.42, 0.34, 'outer shell: 4 electrons, the ones that bond', cyan, band(230, 800));
+  callout(g, -15 / fov, -14 / fov, -0.4, -0.3, 'second shell: 8 electrons', cyan, band(60, 420));
+  callout(g, 0, 3 / fov, 0.3, 0.26, 'inner shell: 2 electrons', INK, band(12, 110));
   // 原子核：一开始只是正中间一个亮点，后面是一团粉蓝相间的小球
   const radius = nucleusR / fov;
   if (radius < g.ch * 0.6) {
@@ -183,11 +204,15 @@ const NUCLEONS: Nucleon[] = (() => {
 })();
 const nucleusClock = clock();
 const projected = new Float32Array(NUCLEONS.length * 3);
+/** 镜头开始钻以后锁定的那个质子（不然转着转着「最前面那个」换了人，镜头会跳） */
+let nucleusTarget = -1;
 
 export function drawNucleus(g: Grid, zz: number) {
   const fov = fovIn(zz, 1e-15);
-  const angle = 0.6 + nucleusClock(g, 0.35 * (1 - smooth(745, 768, zz)));
-  const jiggle = g.reduced ? 0 : 0.12 * (1 - smooth(750, 772, zz));
+  // 钻进去的时候整体不再转（要钻的那个质子得留在前面），但一直轻轻地晃、每个核子一直在抖
+  const rock = g.reduced ? 0 : 0.07 * Math.sin(g.time * 0.8);
+  const angle = 0.6 + nucleusClock(g, 0.35 * (1 - smooth(745, 768, zz))) + rock;
+  const jiggle = g.reduced ? 0 : 0.12 * (1 - 0.6 * smooth(750, 772, zz));
   const ca = Math.cos(angle);
   const sa = Math.sin(angle);
   // 转一下、抖一下，投影到屏幕上（正交，z 朝向镜头）
@@ -210,8 +235,9 @@ export function drawNucleus(g: Grid, zz: number) {
     }
   });
   const dive = smooth(740, 772, zz);
-  const cx = projected[target * 3] * dive;
-  const cy = projected[target * 3 + 1] * dive;
+  if (dive <= 0.001 || nucleusTarget < 0) nucleusTarget = target;
+  const cx = projected[nucleusTarget * 3] * dive;
+  const cy = projected[nucleusTarget * 3 + 1] * dive;
   const r2 = NUCLEON_R * NUCLEON_R;
   for (let y = 0; y < g.rows; y += 1) {
     const wy = cy + g.oy[y] * fov;
@@ -246,6 +272,26 @@ export function drawNucleus(g: Grid, zz: number) {
       tint(g, i, proton ? 60 * v : 26 * v, proton ? 16 * v : 34 * v, proton ? 30 * v : 70 * v);
     }
   }
+  // 没被别的挡住的球上写 p / n
+  if (NUCLEON_R / fov > g.ch * 3) {
+    for (let k = 0; k < NUCLEONS.length; k += 1) {
+      const px = projected[k * 3];
+      const py = projected[k * 3 + 1];
+      let covered = false;
+      for (let j = 0; j < NUCLEONS.length && !covered; j += 1) {
+        if (j === k) continue;
+        const dx = px - projected[j * 3];
+        const dy = py - projected[j * 3 + 1];
+        const d2 = dx * dx + dy * dy;
+        covered = d2 < r2 && projected[j * 3 + 2] + Math.sqrt(r2 - d2) > projected[k * 3 + 2] + NUCLEON_R;
+      }
+      if (!covered) note(g, (px - cx) / fov, (py - cy) / fov, NUCLEONS[k].proton ? 'p+' : 'n', INK);
+    }
+  }
+  legend(g, [
+    [G.at, [255, 130, 170], 'proton (14 of them)'],
+    [G.at, [170, 190, 255], 'neutron (14 of them)'],
+  ]);
 }
 
 /* ====================== 质子：三个夸克、胶子、海夸克 ====================== */
@@ -293,7 +339,8 @@ export function drawProton(g: Grid, zz: number) {
   const fov = fovIn(zz, 1e-15);
   const fp = g.ch * fov;
   const t = g.reduced ? 0 : g.time;
-  const phase = protonClock(g, 1 - smooth(805, 826, zz));
+  // 镜头钻夸克的时候它们绕得慢一些，但不停（镜头一直跟着要钻的那个）
+  const phase = protonClock(g, 1 - 0.75 * smooth(805, 826, zz));
   placeQuarks(phase);
   const dive = smooth(790, 826, zz);
   const cx = qx[0] * dive;
@@ -360,6 +407,14 @@ export function drawProton(g: Grid, zz: number) {
     walk(g, toX(px + sep), toY(py), toX(px + sep), toY(py), (i) => put(g, i, G.dash, 255 - tone[0] * 0.5, 255 - tone[1] * 0.5, 255 - tone[2] * 0.5));
   }
   QUARKS.forEach((q, k) => blob(g, toX(qx[k]), toY(qy[k]), 0.055 / fov, q.color));
+  const size = 0.055 / fov;
+  QUARKS.forEach((q, k) => note(g, toX(qx[k]), toY(qy[k]) - size * 1.7 - g.ch * 1.5, k === 2 ? 'down quark' : 'up quark', q.color));
+  callout(g, toX((qx[1] + jx) / 2), toY((qy[1] + jy) / 2), toX(jx) - 0.36, toY(jy) + 0.3, 'gluons: the glue between them', [255, 236, 170], 1 - smooth(815, 826, zz));
+  legend(g, [
+    [G.at, [255, 200, 200], 'quark (3 that stay)'],
+    [G.plus, [200, 160, 220], 'quark pairs that pop in and out'],
+    [G.slash, [255, 236, 170], 'gluon field'],
+  ]);
 }
 
 /* ====================== 夸克，以及夸克以下的未知 ====================== */
@@ -388,10 +443,7 @@ export function drawQuark(g: Grid, zz: number) {
     walk(g, x, y, x, y, (i) => put(g, i, glyph, tone[0] * k2, tone[1] * k2, tone[2] * k2));
   }
   // 夸克本身：不管放多大都是一个点
-  walk(g, 0, 0, 0, 0, (i) => {
-    put(g, i, G.at, 255, 96, 96);
-    tint(g, i, 90, 20, 20);
-  });
+  blob(g, 0, 0, g.ch * 1.3, [255, 96, 96]);
   const halo: [number, number, number][] = [
     [-1, 0, G.dash],
     [1, 0, G.dash],
@@ -399,6 +451,23 @@ export function drawQuark(g: Grid, zz: number) {
     [0, 1, G.dot],
   ];
   halo.forEach(([dx, dy, glyph]) => walk(g, dx * g.cw, dy * g.ch, dx * g.cw, dy * g.ch, (i) => put(g, i, glyph, 200, 60, 70)));
+  note(g, 0, -g.ch * 3, 'a quark: still just a point', [255, 150, 150], 0.5, 1 - smooth(-17.2, -18.4, log));
+
+  // 一圈圈刻度从正中间冒出来、扩出屏幕：每一圈是小十倍的尺度
+  const first = Math.min(-18, Math.floor(log + 0.3));
+  for (let n = first; n > first - 3; n -= 1) {
+    const r = 0.5 * 10 ** (n - log);
+    if (r < 0.035 || r > g.aspect) continue;
+    const v = smooth(0.035, 0.12, r) * (1 - smooth(g.half * 0.9, g.aspect * 0.9, r));
+    const steps = Math.ceil((r * 2 * Math.PI) / g.cw);
+    for (let s = 0; s < steps; s += 2) {
+      const a = (s / steps) * Math.PI * 2;
+      const x = Math.cos(a) * r * 1.1;
+      const y = Math.sin(a) * r;
+      walk(g, x, y, x, y, (i) => put(g, i, G.mid, 130 * v + 20, 110 * v + 16, 200 * v + 30));
+    }
+    note(g, 0, r, ` 10^${n} m `, [200 * v + 40, 180 * v + 36, 255 * v], 0.5, v);
+  }
 }
 
 /* ====================== 弦 ====================== */
@@ -447,12 +516,24 @@ export function drawString(g: Grid, zz: number) {
     if (fade > 0.05) drawLoop(g, x * g.aspect * 0.8 * zoom * 0.5, y * zoom * 0.5, r * zoom * fade, t * speed, [0.18, 0.1, 0.06], () => [150 * fade, 120 * fade, 210 * fade], false);
   });
   const heat = 1 - open;
-  // 外面再描一圈暗一点的，线条粗一些、像在发光
-  drawLoop(g, 0, 0, radius + g.ch * 0.9, t, [0.13, 0.08, 0.05], () => [170, 70 * (1 - heat * 0.6), 120 * (1 - heat * 0.6)], false);
-  drawLoop(g, 0, 0, radius, t, [0.13, 0.08, 0.05], (u) => {
-    const pulse = 0.6 + 0.4 * Math.sin(u * Math.PI * 4 - t * 4);
-    return [255, (110 + 145 * pulse) * (1 - heat * 0.6), (150 + 105 * pulse) * (1 - heat * 0.6)];
-  }, true);
+  const modes = [0.13, 0.08, 0.05];
+  // 刚才那一瞬的位置留两道淡淡的残影：看得出它在振
+  [0.14, 0.07].forEach((lag, k) => {
+    const v = 0.22 + k * 0.16;
+    drawLoop(g, 0, 0, radius, t - lag, modes, () => [200 * v, 90 * v, 150 * v], false);
+  });
+  // 外面两圈暗一点的光晕，中间三圈亮的：一根有粗细、在发光的弦
+  [2.2, -2.2, 1.5, -1.5].forEach((offset) => drawLoop(g, 0, 0, radius + g.ch * offset, t, modes, () => [150, 60 * (1 - heat * 0.6), 110 * (1 - heat * 0.6)], false));
+  [0.8, -0.8, 0].forEach((offset) =>
+    drawLoop(g, 0, 0, radius + g.ch * offset, t, modes, (u) => {
+      const pulse = 0.6 + 0.4 * Math.sin(u * Math.PI * 4 - t * 4);
+      const edge = offset === 0 ? 1 : 0.82;
+      return [255 * edge, (110 + 145 * pulse) * (1 - heat * 0.6) * edge, (150 + 105 * pulse) * (1 - heat * 0.6) * edge];
+    }, offset === 0),
+  );
+  const show = smooth(928, 940, zz);
+  callout(g, radius * 0.78, radius * 0.64, radius * 0.78 + 0.2, radius * 0.64 + 0.16, 'a loop of string', [255, 190, 215], show);
+  status(g, 'how it vibrates would decide which particle it is', [200, 180, 240], show);
 }
 
 /* ====================== 普朗克尺度：时空泡沫 ====================== */
@@ -503,4 +584,17 @@ export function drawFoam(g: Grid, zz: number) {
     const sy = (hash2(k + 5, frame * 3) - 0.5) * g.half * 2;
     walk(g, sx, sy, sx, sy, (i) => put(g, i, hash2(k, frame + 1) < 0.5 ? G.star : G.plus, 255, 220, 240));
   }
+  // 一把量不准的尺子：刻度自己在乱跳
+  const row = Math.floor(g.rows * 0.2);
+  const from = Math.floor(g.cols * 0.3);
+  const to = Math.floor(g.cols * 0.7);
+  let next = from;
+  for (let c = from; c <= to; c += 1) {
+    const tick = c === next;
+    if (tick) next = c + 4 + Math.floor(hash2(c, frame >> 1) * 9);
+    const i = (row + (hash2(c, frame) < 0.06 ? 1 : 0)) * g.cols + c;
+    put(g, i, tick ? G.pipe : G.dash, 255, 143, 189);
+    tint(g, i, 12, 10, 20);
+  }
+  note(g, 0, g.half - (row - 1.5) * g.ch, 'a ruler stops working here', [255, 190, 215]);
 }

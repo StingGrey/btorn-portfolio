@@ -2,11 +2,10 @@ import './dive.css';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { AsciiEnd } from '../AsciiEnd';
 import type { Portrait } from '../portrait';
-import { addWheelSpeed } from '../smoothScroll';
-import type { Grids } from './director';
-import { screenUnit, twin } from './grid';
+import type { FrameOut, Grids } from './director';
+import { hash1, screenUnit, twin } from './grid';
 import type { DiveRenderer } from './renderer';
-import { STATIONS, TRACK, formatScale, wheelSpeed } from './timeline';
+import { SCROLL, STATIONS, formatScale, storyAt } from './timeline';
 
 /**
  * ASCII 页脚，以及页脚后面「一直往下滑」的那一段：页脚的字一列列掉光、裂开、炸掉，剩一颗粉色的 O，
@@ -23,6 +22,7 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
   const pinRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const notesRef = useRef<HTMLDivElement | null>(null);
   const scaleRef = useRef<HTMLSpanElement | null>(null);
   const rulerRef = useRef<HTMLSpanElement | null>(null);
   const zRef = useRef(-1);
@@ -52,9 +52,6 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
     };
   }, []);
 
-  // 滚轮在几段热闹的地方放慢
-  useEffect(() => addWheelSpeed(() => wheelSpeed(zRef.current)), []);
-
   // 页脚完整地停在屏幕上两秒多，边框底下松掉两个字，暗示下面还有东西
   useEffect(() => {
     if (loose || reducedMotion) return;
@@ -81,7 +78,8 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
     const pin = pinRef.current;
     const stage = stageRef.current;
     const host = hostRef.current;
-    if (!track || !pin || !stage || !host) return;
+    const noteLayer = notesRef.current;
+    if (!track || !pin || !stage || !host || !noteLayer) return;
     let disposed = false;
     let renderer: DiveRenderer | null = null;
     let grids: Grids | null = null;
@@ -96,6 +94,85 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
     let lastHud = false;
     let lastScale = '';
     let lastRuler = '';
+    let shaking = false;
+    // 标注：一批复用的小标签和引线，每帧只改位置、文字和透明度
+    const noteEls: HTMLSpanElement[] = [];
+    const lineEls: HTMLElement[] = [];
+    const noteText: string[] = [];
+    const noteWidth: number[] = [];
+    let notesShown = 0;
+    const css = (c: number[]) => `rgb(${c[0] | 0} ${c[1] | 0} ${c[2] | 0})`;
+    const syncNotes = (notes: FrameOut['notes'] | null) => {
+      const count = notes?.count ?? 0;
+      if (notes && count > 0) {
+        const width = stage.clientWidth;
+        const height = stage.clientHeight;
+        const unit = screenUnit(width, height);
+        const hudBox = stage.querySelector<HTMLElement>('.gd-hud');
+        for (let k = 0; k < count; k += 1) {
+          const label = notes.labels[k];
+          let el = noteEls[k];
+          if (!el) {
+            el = document.createElement('span');
+            el.className = 'gd-note';
+            const line = document.createElement('i');
+            line.className = 'gd-line';
+            noteLayer.append(line, el);
+            noteEls[k] = el;
+            lineEls[k] = line;
+            noteText[k] = '';
+          }
+          el.style.display = '';
+          if (noteText[k] !== label.text) {
+            el.textContent = label.text;
+            noteText[k] = label.text;
+            noteWidth[k] = el.offsetWidth;
+          }
+          const w = noteWidth[k];
+          const line = lineEls[k];
+          let left = 0;
+          let top = 0;
+          if (label.row >= 0) {
+            el.dataset.legend = 'true';
+            el.style.setProperty('--sw', css(label.swatch));
+            left = 16;
+            top = 78 + label.row * 22;
+          } else {
+            if (el.dataset.legend) delete el.dataset.legend;
+            if (label.row === -2) {
+              // 状态说明：宽屏放右下角，窄屏放在读数框正上方
+              const wide = width >= 760;
+              left = wide ? width - w - 20 : (width - w) / 2;
+              top = wide ? height - 46 : height - (hudBox?.offsetHeight ?? 120) - 52;
+            } else {
+              left = width / 2 + label.x * unit - label.align * w;
+              top = height / 2 - label.y * unit - 10;
+            }
+            // 别让字跑出屏幕
+            left = Math.min(Math.max(left, 6), Math.max(6, width - w - 6));
+          }
+          el.style.transform = `translate(${left.toFixed(1)}px, ${top.toFixed(1)}px)`;
+          el.style.color = css(label.color);
+          el.style.opacity = label.opacity.toFixed(2);
+          if (label.line) {
+            const x0 = width / 2 + label.fx * unit;
+            const y0 = height / 2 - label.fy * unit;
+            const x1 = label.align > 0.5 ? left + w : left;
+            const y1 = top + 10;
+            line.style.display = '';
+            line.style.width = `${Math.hypot(x1 - x0, y1 - y0).toFixed(1)}px`;
+            line.style.transform = `translate(${x0.toFixed(1)}px, ${y0.toFixed(1)}px) rotate(${Math.atan2(y1 - y0, x1 - x0).toFixed(4)}rad)`;
+            line.style.background = css(label.color);
+            line.style.opacity = (label.opacity * 0.75).toFixed(2);
+          } else line.style.display = 'none';
+        }
+      }
+      for (let k = count; k < notesShown; k += 1) {
+        noteEls[k].style.display = 'none';
+        lineEls[k].style.display = 'none';
+      }
+      notesShown = count;
+    };
 
     // 每次挂载都用一块新画布（StrictMode 下先销毁的那个渲染器会把画布上下文一起关掉）
     const canvas = document.createElement('canvas');
@@ -108,7 +185,8 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
       const height = footerOf()?.offsetHeight ?? window.innerHeight;
       const travel = rect.height - height;
       if (travel <= 1) return -1;
-      return ((Math.min(0, window.innerHeight - height) - rect.top) / travel) * TRACK;
+      // 滚动距离先换成「故事位置」：哪里该多滑一会儿都在 timeline 的 PACE 里
+      return storyAt(((Math.min(0, window.innerHeight - height) - rect.top) / travel) * SCROLL);
     };
 
     const layout = () => {
@@ -173,6 +251,9 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
           pin.dataset.diving = 'false';
           // 页脚回来以后可能又变了（比如边框松掉的那两个字）：下次再掉重新量一遍
           stale = true;
+          host.style.transform = '';
+          shaking = false;
+          syncNotes(null);
         }
         showHud(false, 0, 0);
         return;
@@ -182,10 +263,21 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
       const g = grids.main;
       g.time = now / 1000;
       g.reduced = reducedMotion;
-      const out = director.drawFrame(grids, Math.min(z, TRACK), origin);
+      const out = director.drawFrame(grids, z, origin);
       renderer.upload();
       renderer.setFall(out.fall, out.gather, gatherAt[0], gatherAt[1], reducedMotion);
       renderer.render(out.glyphs);
+      // 爆炸那一下整块画面跟着震：每 36ms 换一个方向，越往后越轻
+      if (out.shake > 0.01) {
+        const beat = Math.floor(now / 36);
+        const reach = out.shake * 20;
+        host.style.transform = `translate(${((hash1(beat) - 0.5) * 2 * reach).toFixed(1)}px, ${((hash1(beat + 977) - 0.5) * 2 * reach).toFixed(1)}px)`;
+        shaking = true;
+      } else if (shaking) {
+        host.style.transform = '';
+        shaking = false;
+      }
+      syncNotes(out.notes);
       showHud(out.hud.show, out.hud.station, out.hud.log);
       // 在这一段里一直画（大多数场景自己会动）；滑出去就停
       frame = requestAnimationFrame(tick);
@@ -249,6 +341,7 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
       window.removeEventListener('scroll', onScroll);
       renderer?.dispose();
       canvas.remove();
+      noteLayer.replaceChildren();
       pin.dataset.diving = 'false';
     };
   }, [forceWebGL, reducedMotion]);
@@ -258,12 +351,13 @@ export function DeepDive({ reducedMotion, forceWebGL }: Props) {
     <section
       className="gd-track"
       ref={trackRef}
-      style={failed ? undefined : ({ height: `calc(${pinHeight}px + ${TRACK}svh)` } as CSSProperties)}
+      style={failed ? undefined : ({ height: `calc(${pinHeight}px + ${SCROLL}svh)` } as CSSProperties)}
     >
       <div className="gd-pin" ref={pinRef} data-diving="false">
         <AsciiEnd reducedMotion={reducedMotion} loose={loose} />
         <div className="gd-stage" ref={stageRef} aria-hidden="true">
           <div className="gd-host" ref={hostRef} />
+          <div className="gd-notes" ref={notesRef} />
           <div className="gd-hud" data-show={hud}>
             <p className="gd-read">
               <span>SCALE </span>

@@ -336,41 +336,47 @@ frames.forEach(({ rgba }, frameIndex) => {
   }
 });
 
-// 黄星星发夹：最「黄」的那种颜色，在停住的那一帧里、上半身那一团的中心和大小（胸口还有一颗小星星，要避开）
+// 黄星星发夹：最「黄」的那种颜色，每一帧里上半身那一团的中心（胸口还有一颗小星星，要避开）。
+// 镜头钻星星的时候跟着它走：她一直在蹦，星星的位置每帧都不一样
 const yellowness = ([r, g, b]) => Math.min(r, g) - b;
 const star = palette.reduce((best, color, index) => (yellowness(color) > yellowness(palette[best]) ? index : best), 0);
-const hold = out.subarray(HOLD_FRAME * SIZE * SIZE, (HOLD_FRAME + 1) * SIZE * SIZE);
-const seen = new Uint8Array(SIZE * SIZE);
-let bestBlob = null;
-for (let start = 0; start < SIZE * SIZE; start += 1) {
-  if (seen[start] || hold[start] !== star) continue;
-  const queue = [start];
-  seen[start] = 1;
-  let count = 0;
-  let sx = 0;
-  let sy = 0;
-  while (queue.length) {
-    const i = queue.pop();
-    const x = i % SIZE;
-    const y = Math.floor(i / SIZE);
-    count += 1;
-    sx += x;
-    sy += y;
-    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= SIZE || ny >= SIZE) return;
-      const j = ny * SIZE + nx;
-      if (!seen[j] && hold[j] === star) {
-        seen[j] = 1;
-        queue.push(j);
-      }
-    });
+function findStar(frameIndex) {
+  const frame = out.subarray(frameIndex * SIZE * SIZE, (frameIndex + 1) * SIZE * SIZE);
+  const seen = new Uint8Array(SIZE * SIZE);
+  let best = null;
+  for (let start = 0; start < SIZE * SIZE; start += 1) {
+    if (seen[start] || frame[start] !== star) continue;
+    const queue = [start];
+    seen[start] = 1;
+    let count = 0;
+    let sx = 0;
+    let sy = 0;
+    while (queue.length) {
+      const i = queue.pop();
+      const x = i % SIZE;
+      const y = Math.floor(i / SIZE);
+      count += 1;
+      sx += x;
+      sy += y;
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= SIZE || ny >= SIZE) return;
+        const j = ny * SIZE + nx;
+        if (!seen[j] && frame[j] === star) {
+          seen[j] = 1;
+          queue.push(j);
+        }
+      });
+    }
+    const cy = sy / count;
+    if (cy < SIZE * 0.6 && (!best || count > best.count)) best = { count, x: sx / count, y: cy };
   }
-  const cy = sy / count;
-  if (cy < SIZE * 0.6 && (!bestBlob || count > bestBlob.count)) bestBlob = { count, x: sx / count, y: cy };
+  return best;
 }
-if (!bestBlob) throw new Error('could not find the star hair clip');
+const holdStar = findStar(HOLD_FRAME);
+if (!holdStar) throw new Error('could not find the star hair clip');
+const stars = frames.map((_, index) => findStar(index) ?? holdStar);
 
 const packed = deflateSync(out, { level: 9 });
 writeFileSync(OUT_BIN, packed);
@@ -387,12 +393,15 @@ export const CHIP_GIRL = {
   /** 从暗到亮；0 号是勾线 */
   palette: ${JSON.stringify(palette)} as [number, number, number][],
   outline: ${OUTLINE},
-  /** 镜头钻进去的那一帧，和那一帧里黄星星发夹的中心（像素）、大概半径 */
+  /** 没通电（还只是刻线）、或者减少动效时停在哪一帧：跳得最高、身子最直的那一帧 */
   holdFrame: ${HOLD_FRAME},
-  star: { index: ${star}, x: ${bestBlob.x.toFixed(2)}, y: ${bestBlob.y.toFixed(2)}, r: ${Math.sqrt(bestBlob.count / Math.PI).toFixed(2)} },
+  /** 黄星星发夹的颜色序号和大概半径（像素） */
+  star: { index: ${star}, r: ${Math.sqrt(holdStar.count / Math.PI).toFixed(2)} },
+  /** 每一帧里黄星星发夹的中心（像素）：x0, y0, x1, y1, … */
+  stars: [${stars.map((s) => `${s.x.toFixed(1)}, ${s.y.toFixed(1)}`).join(', ')}],
 };
 `;
 writeFileSync(OUT_TS, ts);
 console.log(`palette ${JSON.stringify(palette)}`);
-console.log(`star index ${star} at (${bestBlob.x.toFixed(1)}, ${bestBlob.y.toFixed(1)}), ${bestBlob.count} px`);
+console.log(`star index ${star}; per-frame centres ${stars.map((s) => `${s.x.toFixed(0)},${s.y.toFixed(0)}`).join(' ')}`);
 console.log(`bin ${packed.length} bytes (raw ${out.length})`);

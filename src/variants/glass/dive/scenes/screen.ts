@@ -5,6 +5,8 @@ import { CHIP_GIRL } from '../chipGirl';
 import { G, RAMP, gi, lineGlyph } from '../charset';
 import { girlFrames } from '../girl';
 import { BG, block, clearGrid, hash2, noise2, put, smooth, threshold, tint, walk, type Grid } from '../grid';
+import { INK, callout, note, status } from '../notes';
+import { drawO } from './intro';
 import { interpolate, logScaleAt } from '../timeline';
 
 /* ====================== ① 像素：粉色 O → 像素 → 子像素 ====================== */
@@ -18,7 +20,10 @@ const lit = (px: number, py: number) => px >= 0 && px < 5 && py >= 0 && py < 7 &
 let cr = 0;
 let cg = 0;
 let cb = 0;
-/** 屏幕上一个点的颜色（0..1）：黑色矩阵、红绿蓝三条子像素；亮着的是粉色 O 的像素 */
+/**
+ * 屏幕上一个点的颜色（0..1）：黑色矩阵、红绿蓝三条子像素；亮着的是粉色 O 的像素。
+ * 子像素不是死板的方块：四个角是圆的，左下角被晶体管占掉一小块，中间比两边亮一点，正中有一道分成上下两半的细缝
+ */
 function pixelColor(wx: number, wy: number, unlit: number) {
   const px = Math.floor(wx);
   const py = Math.floor(wy);
@@ -31,7 +36,15 @@ function pixelColor(wx: number, wy: number, unlit: number) {
   const k = Math.floor(s);
   const sf = s - k;
   if (sf < 0.1 || sf > 0.9) return;
-  const v = lit(px, py) ? (k === 0 ? 1 : k === 1 ? 0.37 : 0.56) : unlit;
+  const u = (sf - 0.1) / 0.8;
+  const w = (fy - 0.07) / 0.86;
+  const cu = Math.abs(u - 0.5) * 2;
+  const cw = Math.abs(w - 0.5) * 2;
+  if (cu > 0.7 && cw > 0.9 && (cu - 0.7) / 0.3 + (cw - 0.9) / 0.1 > 1) return;
+  if (u < 0.42 && w < 0.085) return;
+  let v = lit(px, py) ? (k === 0 ? 1 : k === 1 ? 0.37 : 0.56) : unlit;
+  v *= 0.8 + 0.2 * (1 - cu * cu);
+  if (Math.abs(w - 0.5) < 0.012) v *= 0.5;
   if (k === 0) {
     cr = v;
     cg = v * 0.12;
@@ -56,14 +69,9 @@ export function drawPixels(g: Grid, zz: number, ax: number, ay: number) {
   const cy = 3.5 - ay * drift * fov;
   const fpx = g.cw * fov;
   const fpy = g.ch * fov;
-  if (fpy > 7) {
-    // 整个 O 还装不满一格：就是开场留下的那一个字
-    const sx = (2.5 - cx) / fov;
-    const sy = (3.5 - cy) / fov;
-    walk(g, sx, sy, sx, sy, (i) => {
-      put(g, i, G.O, 255, 95, 143);
-      tint(g, i, 52, 12, 30);
-    });
+  if (fpy > 2.4) {
+    // 整个 O 还只有两三格高：就是开场留下的那个小圆环
+    drawO(g, (2.5 - cx) / fov, (3.5 - cy) / fov);
     return;
   }
   const unlit = 0.07 * smooth(6, 1.5, fpy);
@@ -92,6 +100,15 @@ export function drawPixels(g: Grid, zz: number, ax: number, ay: number) {
       block(g, y * g.cols + x, m * 1.2, (r / m) * 255, (gg / m) * 255, (b / m) * 255, 0.3);
     }
   }
+  // 标注：这一格是一个像素；再近一点，三条子像素各是什么颜色
+  const toX = (wx: number) => (wx - cx) / fov;
+  const toY = (wy: number) => (wy - cy) / fov;
+  const rows = 1 / fpy;
+  const one = smooth(4, 7, rows) * (1 - smooth(24, 36, rows));
+  callout(g, toX(0.5), toY(4), toX(0.5) + 0.16, toY(4) + 0.1, 'one pixel', INK, one);
+  const sub = smooth(20, 32, rows);
+  const names = rows > 70 ? ['red subpixel', 'green subpixel', 'blue subpixel'] : ['R', 'G', 'B'];
+  names.forEach((name, k) => note(g, toX((k * 2 + 1) / 6), toY(3.5), name, INK, 0.5, sub));
 }
 
 /* ====================== ② 穿过屏幕：一层层夹层 + 背后的主板 ====================== */
@@ -169,16 +186,17 @@ function rodSlot(i: number, j: number, t: number) {
   const o = slot * 4;
   if (rodKey[slot] !== key) {
     rodKey[slot] = key;
-    const a = 0.9 * Math.sin(0.31 * i + 0.17 * j) + 0.7 * Math.sin(t * 1.4 + 0.27 * i - 0.22 * j) + (hash2(i + 3, j) - 0.5) * 0.4;
-    rods[o] = i + (hash2(i, j) - 0.5) * 0.35;
-    rods[o + 1] = j + (hash2(j, i + 7) - 0.5) * 0.35;
+    // 一片一片地跟着电压转：相邻的棍子方向差不多，整体像波浪一样扭
+    const a = 0.75 * Math.sin(0.27 * i + t * 0.9) + 0.6 * Math.sin(0.23 * j - t * 0.7) + 0.12 * j + (hash2(i + 3, j) - 0.5) * 0.22;
+    rods[o] = i + (hash2(i, j) - 0.5) * 0.16;
+    rods[o + 1] = j + (hash2(j, i + 7) - 0.5) * 0.16;
     rods[o + 2] = Math.cos(a);
     rods[o + 3] = Math.sin(a);
   }
   return o;
 }
 
-/** 液晶：一根根小棍子，排着队扭；跟着电压一阵一阵地转 */
+/** 液晶：一根根两头圆的小棍子（中间亮、边上暗），排着队扭；跟着电压一阵一阵地转 */
 function lcLayer(wx: number, wy: number, fp: number, t: number, g: Grid) {
   lcov = 0;
   if (fp > 0.7) {
@@ -204,7 +222,7 @@ function lcLayer(wx: number, wy: number, fp: number, t: number, g: Grid) {
       const py = rods[o + 1];
       const dx = rods[o + 2];
       const dy = rods[o + 3];
-      const along = Math.max(-0.36, Math.min(0.36, (wx - px) * dx + (wy - py) * dy));
+      const along = Math.max(-0.33, Math.min(0.33, (wx - px) * dx + (wy - py) * dy));
       const ex = wx - px - dx * along;
       const ey = wy - py - dy * along;
       const d = ex * ex + ey * ey;
@@ -215,17 +233,31 @@ function lcLayer(wx: number, wy: number, fp: number, t: number, g: Grid) {
       }
     }
   }
-  const reach = 0.08 + fp * 0.5;
-  if (best > reach * reach) return;
-  lcov = 1;
-  lg = fp < 0.05 ? G.full : lineGlyph(bestDx / g.cw, bestDy / g.ch);
-  const k = 0.55 + 0.45 * Math.abs(2 * bestDx * bestDy);
-  lr = 170 * k;
-  lgr = 232 * k;
-  lb = 255 * k;
+  const radius = 0.13;
+  const d = Math.sqrt(best);
+  if (d < radius + fp * 0.4) {
+    lcov = 1;
+    const core = Math.max(0, 1 - d / radius);
+    if (fp < 0.1) lg = core > 0.5 ? G.full : core > 0.28 ? G.dark : core > 0.1 ? G.medium : G.light;
+    else lg = lineGlyph(bestDx / g.cw, bestDy / g.ch);
+    // 斜着的棍子透光最多，看起来最亮
+    const k = (0.4 + 0.6 * core) * (0.62 + 0.38 * Math.abs(2 * bestDx * bestDy));
+    lr = 140 * k + 110 * core * core;
+    lgr = 226 * k + 28 * core * core;
+    lb = 255 * k;
+  } else if (d < radius * 2 && fp < 0.2) {
+    lcov = 0.3;
+    lg = G.dot;
+    lr = 60;
+    lgr = 110;
+    lb = 150;
+  }
 }
 
-/** TFT 背板：栅极线（横）、数据线（竖），每个子像素角上一个晶体管；一行一行地扫 */
+/**
+ * TFT 背板：栅极线（横）、数据线（竖）；每个子像素角上一个晶体管（栅极、半导体小岛、源漏两根指头、一个接触孔），
+ * 上面是带「人」字形细缝的透明像素电极（IPS 屏在显微镜下就是这个样子）；一行一行地扫
+ */
 function tftLayer(wx: number, wy: number, fp: number, t: number) {
   lcov = 0;
   const fx = wx - Math.floor(wx);
@@ -234,40 +266,75 @@ function tftLayer(wx: number, wy: number, fp: number, t: number) {
   const fy = ry - row;
   const active = Math.floor(t * 7) % 18 === ((row % 18) + 18) % 18;
   const thick = fp < 0.06;
-  if (fy < 0.035 || fy > 0.965) {
+  if (fy < 0.045 || fy > 0.955) {
     lcov = 1;
-    lg = thick ? G.full : G.h;
-    lr = active ? 140 : 200;
-    lgr = active ? 240 : 180;
-    lb = active ? 255 : 120;
+    const edge = (fy > 0.03 && fy < 0.045) || (fy > 0.955 && fy < 0.97);
+    lg = thick ? (edge ? G.dark : G.full) : G.h;
+    lr = active ? 140 : edge ? 232 : 204;
+    lgr = active ? 240 : edge ? 212 : 182;
+    lb = active ? 255 : edge ? 150 : 118;
     return;
   }
-  if (fx < 0.05 || fx > 0.95) {
+  if (fx < 0.055 || fx > 0.945) {
     lcov = 1;
     lg = thick ? G.full : G.v;
-    lr = 200;
-    lgr = 180;
-    lb = 120;
+    lr = 196;
+    lgr = 172;
+    lb = 112;
     return;
   }
-  if (fx > 0.1 && fx < 0.42 && fy > 0.06 && fy < 0.26) {
+  if (fx > 0.07 && fx < 0.46 && fy > 0.055 && fy < 0.3) {
+    const u = (fx - 0.07) / 0.39;
+    const v = (fy - 0.055) / 0.245;
     lcov = 1;
     lg = thick ? G.full : G.square;
-    lr = active ? 255 : 235;
-    lgr = active ? 210 : 140;
-    lb = active ? 130 : 70;
+    if (v < 0.3) {
+      // 栅极：从栅极线伸上来的一小块
+      lr = active ? 150 : 204;
+      lgr = active ? 240 : 182;
+      lb = active ? 255 : 118;
+    } else if (Math.abs(u - 0.84) < 0.09 && Math.abs(v - 0.7) < 0.15) {
+      // 接触孔：漏极从这里连到像素电极
+      lr = 250;
+      lgr = 250;
+      lb = 240;
+    } else if (u > 0.32 && u < 0.68) {
+      // 半导体小岛：开关就在这里
+      lg = thick ? G.dark : G.square;
+      lr = active ? 210 : 158;
+      lgr = active ? 150 : 112;
+      lb = active ? 255 : 214;
+    } else {
+      // 源 / 漏
+      lr = 238;
+      lgr = u <= 0.32 ? 146 : 170;
+      lb = u <= 0.32 ? 72 : 96;
+    }
     return;
   }
-  if (fx > 0.12 && fx < 0.9 && fy > 0.3 && fy < 0.92) {
-    lcov = 0.35;
-    lg = G.light;
-    lr = 70;
-    lgr = 100;
-    lb = 150;
+  if (fy >= 0.3 && fy <= 0.335) {
+    // 存储电容的公共线
+    lcov = 0.7;
+    lg = G.h;
+    lr = 150;
+    lgr = 132;
+    lb = 92;
+    return;
+  }
+  if (fx > 0.1 && fx < 0.92 && fy > 0.335 && fy < 0.935) {
+    const u = (fx - 0.1) / 0.82;
+    const v = (fy - 0.335) / 0.6;
+    const s = u * 5 + Math.abs(v - 0.5) * 2.6;
+    const slit = s - Math.floor(s) < 0.42;
+    lcov = slit ? 0.2 : 0.85;
+    lg = slit ? G.light : thick ? G.dark : G.medium;
+    lr = slit ? 44 : active ? 126 : 96;
+    lgr = slit ? 66 : active ? 200 : 150;
+    lb = slit ? 104 : active ? 230 : 190;
   }
 }
 
-/** 背光的导光板：一片印着小白点的板子，点子大小渐变，周围一圈淡淡的光 */
+/** 背光的导光板：一片印着小白点的板子，点子大小渐变，每个点中间亮、边上暗，外面两圈淡淡的光晕 */
 function backlightLayer(wx: number, wy: number, fp: number) {
   lcov = 0;
   const j0 = Math.round(wy / 0.866);
@@ -286,22 +353,30 @@ function backlightLayer(wx: number, wy: number, fp: number) {
   }
   if (best < radius + fp * 0.3) {
     lcov = 1;
-    lg = fp < radius * 0.6 ? G.full : fp < radius * 1.5 ? G.disc : G.o;
-    lr = 235;
-    lgr = 240;
-    lb = 255;
-  } else if (best < radius * 2.2) {
-    lcov = 0.45;
-    lg = G.mid;
-    lr = 130;
-    lgr = 140;
-    lb = 185;
-  } else if (hash2(Math.floor(wx * 4), Math.floor(wy * 4)) < 0.12) {
+    const core = Math.max(0, 1 - best / radius);
+    lg = fp < radius * 0.5 ? (core > 0.45 ? G.full : core > 0.18 ? G.dark : G.medium) : fp < radius * 1.5 ? G.disc : G.o;
+    const k = 0.72 + 0.28 * core;
+    lr = 232 * k + 23 * core;
+    lgr = 238 * k + 17 * core;
+    lb = 255 * k;
+  } else if (best < radius * 1.7) {
+    lcov = 0.55;
+    lg = G.colon;
+    lr = 150;
+    lgr = 162;
+    lb = 215;
+  } else if (best < radius * 2.6) {
+    lcov = 0.32;
+    lg = G.dot;
+    lr = 96;
+    lgr = 108;
+    lb = 165;
+  } else if (hash2(Math.floor(wx * 4), Math.floor(wy * 4)) < 0.1) {
     lcov = 0.3;
     lg = G.dot;
-    lr = 50;
-    lgr = 60;
-    lb = 110;
+    lr = 46;
+    lgr = 56;
+    lb = 104;
   }
 }
 
@@ -362,6 +437,13 @@ const PARTS: Part[] = (() => {
     // 封装基板上、顶盖外面的小电容
     parts.push({ x: sx * 6.8, y: sy * 6.8, w: 0.6, h: 0.32, kind: 3 });
   });
+  // 远一点还有几颗小芯片（黑身子、两排引脚）、一颗晶振（银色的小罐子）、一排连接器
+  parts.push({ x: -19, y: 9, w: 5, h: 4, kind: 4 });
+  parts.push({ x: 20, y: 11, w: 4, h: 3, kind: 4 });
+  parts.push({ x: 18, y: -9, w: 3.4, h: 3.4, kind: 4 });
+  parts.push({ x: -17, y: -6, w: 3.4, h: 1.5, kind: 5 });
+  parts.push({ x: -2, y: -17, w: 12, h: 2.2, kind: 6 });
+  parts.push({ x: 4, y: 17.5, w: 9, h: 2, kind: 6 });
   return parts;
 })();
 
@@ -415,10 +497,14 @@ const TRACES: Trace[] = (() => {
   return traces;
 })();
 
-/** 镜头钻进去的黄星星（毫米，顶盖中心为原点） */
+/** 小女孩在顶盖上占的那一块（毫米，顶盖中心为原点） */
 const ART = { x0: -5, y1: 5.2, size: 10 };
-const STAR_X = ART.x0 + (CHIP_GIRL.star.x / CHIP_GIRL.size) * ART.size;
-const STAR_Y = ART.y1 - (CHIP_GIRL.star.y / CHIP_GIRL.size) * ART.size;
+/** 第 frame 帧里黄星星发夹的中心（毫米） */
+const starX = (frame: number) => ART.x0 + (CHIP_GIRL.stars[frame * 2] / CHIP_GIRL.size) * ART.size;
+const starY = (frame: number) => ART.y1 - (CHIP_GIRL.stars[frame * 2 + 1] / CHIP_GIRL.size) * ART.size;
+/** 她蹦一轮，星星的平均位置 */
+const STAR_MEAN_X = Array.from({ length: CHIP_GIRL.frames }, (_, k) => starX(k)).reduce((a, b) => a + b) / CHIP_GIRL.frames;
+const STAR_MEAN_Y = Array.from({ length: CHIP_GIRL.frames }, (_, k) => starY(k)).reduce((a, b) => a + b) / CHIP_GIRL.frames;
 
 const roundedBox = (x: number, y: number, hx: number, hy: number, r: number) => {
   const qx = Math.abs(x) - hx + r;
@@ -432,15 +518,18 @@ const lift = (v: number) => Math.min(255, v * 1.28 + 10);
 
 function drawBoard(g: Grid, zz: number, zc: number) {
   const fov = BOARD_F * (BOARD_D - zc);
-  const dive = smooth(330, 372, zz);
-  const cx = STAR_X * dive;
-  const cy = STAR_Y * dive;
   const fp = g.ch * fov;
   const frames = girlFrames();
-  // 通电：一道扫描线从上往下扫过去，扫过的地方亮成彩色；通完电开始蹦，镜头要钻星星了就停在最高那一帧
+  // 通电：一道扫描线从上往下扫过去，扫过的地方亮成彩色；通完电就一直蹦（减少动效时停在一帧）
   const power = g.reduced ? (zz >= 290 ? 1 : 0) : smooth(282, 298, zz);
-  const bouncing = power >= 1 && zz < 336 && !g.reduced;
+  const bouncing = power >= 1 && !g.reduced;
   const frame = bouncing ? Math.floor((g.time * 1000) / CHIP_GIRL.delayMs) % CHIP_GIRL.frames : CHIP_GIRL.holdFrame;
+  // 镜头钻她的黄星星：先对准星星蹦一轮的平均位置，越钻越近，越牢地跟着这一帧的星星走。
+  // 她一蹦星星要上下动将近 1mm，比钻到最后的整个视野还大，不跟就会跳出画面
+  const dive = smooth(330, 372, zz);
+  const lock = dive ** 2.5;
+  const cx = STAR_MEAN_X * dive + (starX(frame) - STAR_MEAN_X) * lock;
+  const cy = STAR_MEAN_Y * dive + (starY(frame) - STAR_MEAN_Y) * lock;
   const sweep = power * 176 - 8;
   const sheen = -9 + 18 * smooth(212, 340, zz);
   const S = CHIP_GIRL.size;
@@ -522,9 +611,13 @@ function drawBoard(g: Grid, zz: number, zc: number) {
         tint(g, i, 34, 48, 32);
         continue;
       }
-      // 阻焊绿
+      // 阻焊绿；每隔一段有一个接地的小过孔
       tint(g, i, 10, 40, 25);
-      if (hash2(Math.floor(wx * 3), Math.floor(wy * 3)) < 0.16) put(g, i, G.dot, 30, 100, 58);
+      const vx = Math.round(wx / 2.6);
+      const vy = Math.round(wy / 2.6);
+      const vd = Math.max(Math.abs(wx - vx * 2.6), Math.abs(wy - vy * 2.6) * 0.9);
+      if (vd < Math.max(0.16, fp * 0.5) && hash2(vx * 5 + 1, vy * 3) < 0.4) put(g, i, fp < 0.2 ? G.ring : G.o, 214, 176, 96);
+      else if (hash2(Math.floor(wx * 3), Math.floor(wy * 3)) < 0.16) put(g, i, G.dot, 30, 100, 58);
     }
   }
 
@@ -582,6 +675,25 @@ function drawBoard(g: Grid, zz: number, zc: number) {
       for (let x = Math.max(0, x0); x <= Math.min(g.cols - 1, x1); x += 1) {
         const i = y * g.cols + x;
         const along = horizontal ? (x - x0 + 0.5) / (x1 - x0 + 1) : (y - y0 + 0.5) / (y1 - y0 + 1);
+        if (part.kind >= 4) {
+          const top = y === y0 || y === y1;
+          if (part.kind === 4) {
+            // 小芯片：上下两排银色引脚，左上角一个小圆点标着 1 脚
+            if (top && (x - x0) % 2 === 0) put(g, i, G.left, 206, 208, 220);
+            else if (top) tint(g, i, 10, 40, 25);
+            else if (x === x0 + 1 && y === y0 + 1) put(g, i, G.disc, 220, 220, 230);
+            else put(g, i, G.full, 30, 30, 36);
+            if (!top) tint(g, i, 18, 18, 22);
+          } else if (part.kind === 5) {
+            put(g, i, along < 0.12 || along > 0.88 ? G.medium : G.dark, 208, 212, 222);
+            tint(g, i, 96, 98, 108);
+          } else {
+            const pin = y === Math.round((y0 + y1) / 2) && (x - x0) % 2 === 1;
+            put(g, i, pin ? G.square : G.full, pin ? 240 : 228, pin ? 200 : 218, pin ? 110 : 192);
+            tint(g, i, pin ? 60 : 120, pin ? 50 : 114, pin ? 20 : 98);
+          }
+          continue;
+        }
         const end = along < 0.22 || along > 0.78;
         if (end) {
           put(g, i, G.dark, 210, 212, 222);
@@ -620,6 +732,28 @@ function drawBoard(g: Grid, zz: number, zc: number) {
     put(g, i, gi('U'), 220, 222, 210);
     if ((i + 1) % g.cols !== 0) put(g, i + 1, gi('1'), 220, 222, 210);
   });
+
+  // 顶盖下沿刻着的型号
+  if (fp < 0.45) {
+    const mark = 'BTORN SOFT-1';
+    const col = Math.floor((toX(0) + g.aspect / 2) / g.cw - mark.length / 2);
+    const row = Math.floor((g.half - toY(-5.62)) / g.ch);
+    if (row >= 0 && row < g.rows) {
+      for (let k = 0; k < mark.length; k += 1) {
+        const c = col + k;
+        if (c >= 0 && c < g.cols && mark[k] !== ' ') put(g, row * g.cols + c, gi(mark[k]), 66, 68, 78);
+      }
+    }
+  }
+
+  // 标注：主板上这些东西都是什么
+  const show = smooth(204, 214, zz) * (1 - smooth(246, 258, zz));
+  if (show > 0.02) {
+    const bend = TRACES[14].pts;
+    callout(g, toX(9.4), toY(0), toX(9.4) + 0.2, toY(0) + 0.12, 'capacitor', INK, show);
+    callout(g, toX(bend[4]), toY(bend[5]), toX(bend[4]) - 0.16, toY(bend[5]) + 0.1, 'copper trace', [236, 196, 120], show);
+    callout(g, toX(-4.4), toY(-6), toX(-4.4) - 0.22, toY(-6) - 0.14, 'the chip, under a metal lid', INK, show);
+  }
 }
 
 /** zz 100..380：穿过屏幕的夹层，落到主板上，再一路钻进芯片顶盖上的黄星星 */
@@ -636,7 +770,8 @@ export function drawStack(g: Grid, board: Grid, zz: number) {
   const active = LAYERS.map((layer, index) => {
     const dist = layer.d - zc;
     const near = smooth(0.012, 0.05, dist);
-    const far = 1 - smooth(0.35, 0.9, dist);
+    // 离得远的层先不露面，不然几层叠在一起分不清谁是谁
+    const far = 1 - smooth(0.16, 0.42, dist);
     return { index, fov: layer.F * Math.max(dist, 1e-4), alpha: near * far, near };
   }).filter((layer) => layer.alpha > 0.01);
 
@@ -671,5 +806,29 @@ export function drawStack(g: Grid, board: Grid, zz: number) {
         g.bg[o + 2] = board.bg[o + 2];
       }
     }
+  }
+
+  // 标注：每一层对上焦的时候，指给人看哪个是什么
+  const focus = (centre: number) => 1 - smooth(0.05, 0.1, Math.abs(zc - centre));
+  const lc = focus(0.25);
+  if (lc > 0.02) {
+    const f = LAYERS[1].F * (LAYERS[1].d - zc);
+    const o = rodSlot(2, 1, t);
+    callout(g, rods[o] / f, rods[o + 1] / f, 0.34, 0.3, 'liquid crystal molecule', INK, lc);
+    status(g, 'voltage twists them: light passes, or is blocked', [170, 232, 255], lc);
+  }
+  const tft = focus(0.5);
+  if (tft > 0.02) {
+    const f = LAYERS[2].F * (LAYERS[2].d - zc);
+    callout(g, 0.26 / f, 0.48 / f, 0.4, 0.34, 'transistor (one per subpixel)', [255, 200, 130], tft);
+    callout(g, -1.5 / f, 0, -0.42, 0.2, 'gate line: picks a row', INK, tft);
+    callout(g, 1 / f, -1.3 / f, 0.42, -0.3, 'data line: sets the brightness', INK, tft);
+    callout(g, -0.5 / f, 1.9 / f, -0.4, 0.4, 'pixel electrode', [150, 180, 230], tft);
+  }
+  const bl = focus(0.75);
+  if (bl > 0.02) {
+    const f = LAYERS[3].F * (LAYERS[3].d - zc);
+    callout(g, 1.5 / f, 0.866 / f, 0.42, 0.32, 'dot printed on the light guide', INK, bl);
+    status(g, 'LED light bounces off these dots, up through the screen', [235, 240, 255], bl);
   }
 }

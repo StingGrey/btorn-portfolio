@@ -41,6 +41,51 @@
   height: 100%;
 }
 
+/* 场景里的标注：叠在画布上的小标签（位置每帧由脚本写） */
+.gd-notes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-family: "VT323", ui-monospace, monospace;
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.gd-note {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 1px 5px 2px;
+  white-space: nowrap;
+  background: rgb(7 6 11 / 0.72);
+}
+
+/* 引线：从要指的东西拉到标注的一条细线，线头一个小圆点 */
+.gd-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 1px;
+  transform-origin: 0 0;
+}
+
+.gd-line::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.gd-note[data-legend]::before {
+  content: "\25A0\00A0";
+  color: var(--sw);
+}
+
 .gd-hud {
   position: absolute;
   left: max(16px, 2vw);
@@ -104,6 +149,10 @@
 }
 
 @media (max-width: 560px) {
+  .gd-notes {
+    font-size: 14px;
+  }
+
   .gd-ruler {
     display: none;
   }

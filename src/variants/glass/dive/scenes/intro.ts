@@ -1,13 +1,14 @@
-// 开场的后半段（字掉光以后）：黑屏上三处裂纹 → 三道裂纹爬向粉色的 O → 炸开 → 只剩一颗粉色的 O。
+// 开场的后半段（字掉光以后）：黑屏上三处裂纹 → 三道裂纹爬向粉色的 O → 大爆炸 → 只剩一颗粉色的 O。
 // 全部按滚动位置算，往回滑就原样倒放。
 
-import { G, lineGlyph } from '../charset';
-import { clamp01, fbm2, hash1, hash2, put, smooth, threshold, tint, walk, type Grid } from '../grid';
+import { G, gi, lineGlyph } from '../charset';
+import { BG, clamp01, fbm2, hash1, hash2, put, smooth, threshold, tint, walk, type Grid } from '../grid';
 import { BOOM, CONVERGE, IMPACTS } from '../timeline';
 
 type Path = { xs: number[]; ys: number[]; cum: number[]; len: number };
 type Impact = { x: number; y: number; rays: Path[]; arcs: { r: number; a0: number; a1: number }[] };
-type Model = { key: string; impacts: Impact[]; lines: Path[] };
+type Model = { key: string; impacts: Impact[]; lines: Path[]; bolts: Path[] };
+type Rgb = [number, number, number];
 
 function rng(seed: number) {
   let a = seed >>> 0;
@@ -58,10 +59,10 @@ function model(aspect: number, half: number, ox: number, oy: number): Model {
     const rays: Path[] = [];
     const count = 6 + Math.floor(random() * 2);
     const turn = random() * Math.PI * 2;
-    for (let k = 0; k < count; k += 1) {
-      const a = turn + (k / count) * Math.PI * 2 + (random() - 0.5) * 0.5;
+    for (let n = 0; n < count; n += 1) {
+      const angle = turn + (n / count) * Math.PI * 2 + (random() - 0.5) * 0.5;
       const length = 0.04 + random() * 0.07;
-      rays.push(jagged(random, x, y, x + Math.cos(a) * length, y + Math.sin(a) * length, 4, 0.012));
+      rays.push(jagged(random, x, y, x + Math.cos(angle) * length, y + Math.sin(angle) * length, 4, 0.012));
     }
     const arcs = [0.026, 0.048].map((r) => {
       const a0 = random() * Math.PI * 2;
@@ -70,15 +71,32 @@ function model(aspect: number, half: number, ox: number, oy: number): Model {
     return { x, y, rays, arcs };
   });
   const lines = impacts.map((impact) => jagged(random, impact.x, impact.y, ox, oy, 16, 0.05));
-  cached = { key, impacts, lines };
+  // 爆炸时从 O 往四面八方劈出去的裂纹，一直劈到屏幕外面，半路还会分叉
+  const bolts: Path[] = [];
+  const count = 15;
+  for (let k = 0; k < count; k += 1) {
+    const a = (k / count) * Math.PI * 2 + (random() - 0.5) * 0.3;
+    const length = 0.75 + random() * 1.1;
+    const ex = ox + Math.cos(a) * length * 1.15;
+    const ey = oy + Math.sin(a) * length;
+    bolts.push(jagged(random, ox, oy, ex, ey, 16, 0.045));
+    if (random() < 0.75) {
+      const t = 0.25 + random() * 0.35;
+      const bx = ox + (ex - ox) * t;
+      const by = oy + (ey - oy) * t;
+      const turn = a + (random() < 0.5 ? 0.55 : -0.55);
+      bolts.push(jagged(random, bx, by, bx + Math.cos(turn) * length * 0.45, by + Math.sin(turn) * length * 0.4, 7, 0.025));
+    }
+  }
+  cached = { key, impacts, lines, bolts };
   return cached;
 }
 
-const CRACK: [number, number, number] = [226, 218, 255];
-const PINK: [number, number, number] = [255, 95, 143];
+const CRACK: Rgb = [226, 218, 255];
+const PINK: Rgb = [255, 95, 143];
 
 /** 把一条路径画到 progress（0..1）那么长；前沿冒一点粉色的火星 */
-function drawPath(g: Grid, path: Path, progress: number, fade: number, frame: number) {
+function drawPath(g: Grid, path: Path, progress: number, fade: number, frame: number, color: Rgb = CRACK, sparks = true) {
   if (progress <= 0) return;
   const target = path.len * Math.min(progress, 1);
   for (let k = 1; k < path.xs.length; k += 1) {
@@ -95,10 +113,15 @@ function drawPath(g: Grid, path: Path, progress: number, fade: number, frame: nu
       const x = i % g.cols;
       const y = (i / g.cols) | 0;
       if (fade > 0 && threshold(x, y) < fade) return;
-      put(g, i, glyph, CRACK[0], CRACK[1], CRACK[2]);
+      put(g, i, glyph, color[0], color[1], color[2]);
       tint(g, i, 24, 20, 38);
+      // 一格只有三四个像素宽：线画两格粗才看得清
+      if (x + 1 < g.cols) {
+        put(g, i + 1, glyph, color[0], color[1], color[2]);
+        tint(g, i + 1, 24, 20, 38);
+      }
     });
-    if (b >= target && progress < 1) {
+    if (sparks && b >= target && progress < 1) {
       walk(g, x1, y1, x1, y1, (i) => put(g, i, G.star, PINK[0], PINK[1], PINK[2]));
       for (let s = 0; s < 3; s += 1) {
         const ax = x1 + (hash2(k * 7 + s, frame) - 0.5) * g.cw * 5;
@@ -120,20 +143,21 @@ function drawArc(g: Grid, cx: number, cy: number, r: number, a0: number, a1: num
     walk(g, x, y, x, y, (i) => {
       if (fade > 0 && threshold(i % g.cols, (i / g.cols) | 0) < fade) return;
       put(g, i, glyph, 200, 190, 240);
+      if ((i + 1) % g.cols !== 0) put(g, i + 1, glyph, 200, 190, 240);
     });
   }
 }
 
 /**
- * z：这一段滚过的距离（svh）；ox / oy：粉色 O 在屏幕上的位置。
- * 只管字掉光以后的部分：裂纹、爆炸、最后那颗 O。
+ * z：故事位置；ox / oy：粉色 O 在屏幕上的位置。只管字掉光以后的部分：裂纹、爆炸、最后那颗 O。
+ * 返回这一刻整屏该抖多厉害（0..1）。
  */
 export function drawIntro(g: Grid, z: number, ox: number, oy: number) {
   const m = model(g.aspect, g.half, ox, oy);
   const frame = g.reduced ? 0 : Math.floor(g.time * 14);
   const boom = clamp01((z - BOOM[0]) / (BOOM[1] - BOOM[0]));
-  // 炸开的前三分之一里，裂纹一块块碎掉
-  const crackFade = smooth(0, 0.35, boom);
+  // 一炸开，原来那几道裂纹就被白光吞掉了
+  const crackFade = smooth(0.06, 0.16, boom);
 
   if (crackFade < 1) {
     m.impacts.forEach((impact, k) => {
@@ -152,86 +176,190 @@ export function drawIntro(g: Grid, z: number, ox: number, oy: number) {
     });
   }
 
-  if (boom > 0 && boom < 1 && !g.reduced) drawBoom(g, boom, ox, oy, frame);
+  let shake = 0;
+  if (boom > 0 && boom < 1 && !g.reduced) shake = drawBoom(g, boom, ox, oy, frame, m.bolts);
 
-  // 烟散了，只剩一颗粉色的 O
-  const dot = smooth(0.62, 0.9, boom);
+  // 烟散了，只剩一颗粉色的 O；它亮起来的时候外面荡开一小圈
+  const dot = g.reduced ? smooth(0.5, 0.9, boom) : smooth(0.8, 0.96, boom);
   if (dot > 0) {
-    walk(g, ox, oy, ox, oy, (i) => {
-      if (threshold(i % g.cols, (i / g.cols) | 0) > dot) return;
-      put(g, i, G.O, PINK[0], PINK[1], PINK[2]);
-      tint(g, i, 52, 12, 30);
+    if (dot < 1 && !g.reduced) ring(g, ox, oy, 0.02 + 0.09 * dot, [255 * (1 - dot), 95 * (1 - dot), 143 * (1 - dot)], 0, frame);
+    drawO(g, ox, oy, dot);
+  }
+  return shake;
+}
+
+/** 先升后降：a 处开始、peak 处最强、c 处回到 0 */
+const bump = (x: number, a: number, peak: number, c: number) => smooth(a, peak, x) * (1 - smooth(peak, c, x));
+
+/** 火的颜色：暗紫的烟 → 红 → 橙 → 黄 → 白热 */
+const HEAT: Rgb[] = [
+  [58, 30, 74],
+  [200, 52, 66],
+  [255, 124, 52],
+  [255, 214, 96],
+  [255, 252, 232],
+];
+function heatColor(h: number): Rgb {
+  const s = Math.min(HEAT.length - 1.001, Math.max(0, h) * (HEAT.length - 1));
+  const k = Math.floor(s);
+  const f = s - k;
+  return [HEAT[k][0] + (HEAT[k + 1][0] - HEAT[k][0]) * f, HEAT[k][1] + (HEAT[k + 1][1] - HEAT[k][1]) * f, HEAT[k][2] + (HEAT[k + 1][2] - HEAT[k][2]) * f];
+}
+
+/** 一整圈：字跟着切线方向走；gap > 0 时随机缺一些 */
+function ring(g: Grid, cx: number, cy: number, r: number, color: Rgb, gap: number, frame: number) {
+  if (r <= 0) return;
+  const steps = Math.ceil((r * 2 * Math.PI) / g.cw) + 8;
+  for (let s = 0; s < steps; s += 1) {
+    if (gap > 0 && hash2(s, frame) < gap) continue;
+    const a = (s / steps) * Math.PI * 2;
+    const x = cx + Math.cos(a) * r * 1.12;
+    const y = cy + Math.sin(a) * r;
+    const glyph = lineGlyph(-Math.sin(a) / g.cw, Math.cos(a) / g.ch);
+    walk(g, x, y, x, y, (i) => {
+      put(g, i, glyph, color[0], color[1], color[2]);
+      if ((i + 1) % g.cols !== 0) put(g, i + 1, glyph, color[0], color[1], color[2]);
     });
   }
 }
 
-function drawBoom(g: Grid, b: number, ox: number, oy: number, frame: number) {
-  const ease = 1 - (1 - b) ** 3;
-  const ringR = 0.03 + 0.3 * ease;
-  const ringW = 0.018 + 0.03 * (1 - b);
-  const life = 1 - b;
-  // 颜色：白 → 黄 → 橙 → 粉 → 暗紫
-  const stops: [number, number, number][] = [
-    [255, 250, 230],
-    [255, 222, 120],
-    [255, 150, 80],
-    [255, 95, 143],
-    [110, 60, 140],
-  ];
-  const pick = (t: number): [number, number, number] => {
-    const s = Math.min(stops.length - 1.001, Math.max(0, t) * (stops.length - 1));
-    const k = Math.floor(s);
-    const f = s - k;
-    return [0, 1, 2].map((c) => stops[k][c] + (stops[k + 1][c] - stops[k][c]) * f) as [number, number, number];
-  };
-  const ringColor = pick(b * 1.1);
-  const flash = 1 - smooth(0, 0.2, b);
-  const sparks = [G.star, G.plus, G.x, G.hash, G.at];
-  const reach = ringR + ringW * 2;
-  const x0 = Math.max(0, Math.floor((ox - reach * 1.2 + g.aspect / 2) / g.cw));
-  const x1 = Math.min(g.cols - 1, Math.ceil((ox + reach * 1.2 + g.aspect / 2) / g.cw));
-  const y0 = Math.max(0, Math.floor((g.half - oy - reach * 1.2) / g.ch));
-  const y1 = Math.min(g.rows - 1, Math.ceil((g.half - oy + reach * 1.2) / g.ch));
-  for (let y = y0; y <= y1; y += 1) {
-    for (let x = x0; x <= x1; x += 1) {
-      const i = y * g.cols + x;
-      const dx = g.ox[x] - ox;
-      const dy = g.oy[y] - oy;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      // 一开始那一下白光
-      if (flash > 0 && d < 0.02 + 0.08 * (1 - flash)) {
-        const v = flash * (1 - d / (0.1 + 1e-3));
-        if (v > 0.1) {
-          put(g, i, v > 0.6 ? G.at : v > 0.35 ? G.hash : G.star, 255, 250, 225);
-          tint(g, i, 90 * v, 80 * v, 60 * v);
-          continue;
-        }
-      }
-      // 冲击波那一圈
-      const ring = 1 - Math.abs(d - ringR) / ringW;
-      if (ring > 0 && hash2(i, frame) < 0.35 + ring * 0.6) {
-        put(g, i, sparks[(hash2(frame, i) * sparks.length) | 0], ringColor[0] * life + 40, ringColor[1] * life + 20, ringColor[2] * life + 40);
-        continue;
-      }
-      // 圈里面的烟
-      if (d < ringR * 0.95) {
-        const n = fbm2(dx * 18 + frame * 0.05, dy * 18 - b * 3, 3);
-        if (n > 0.56 - 0.1 * life) {
-          const k = (n - 0.46) * life * 1.6;
-          put(g, i, n > 0.66 ? G.colon : G.dot, 150 * k + 30, 90 * k + 20, 170 * k + 40);
-        }
+/** 那颗粉色的 O：几格字拼成的一个小圆环（单独一个字太小了）。show < 1 时缺着口慢慢长出来 */
+export function drawO(g: Grid, x: number, y: number, show = 1) {
+  if (show <= 0.02) return;
+  ring(g, x, y, g.ch * 1.7, PINK, 1 - show, 3);
+  ring(g, x, y, g.ch * 1.1, [200, 70, 110], 1 - show, 5);
+}
+
+const CHUNKS = [...'BTORN@#&%$?!'].map(gi);
+const DUST = [G.dot, G.comma, G.quote, G.star, G.plus];
+
+/**
+ * 爆炸，一层一层叠起来：先往里吸一口气 → 整屏一闪 → 翻滚的火球 → 三圈冲击波（最外一圈红绿蓝错开）→
+ * 裂纹从 O 劈向四面八方 → 带拖尾的碎屑（里面混着页面自己的字）受重力落下 → 余烬慢慢飘。
+ */
+function drawBoom(g: Grid, b: number, ox: number, oy: number, frame: number, bolts: Path[]) {
+  const reach = Math.hypot(g.aspect, g.half * 2);
+
+  // 整屏一闪：所有格子的底色一起亮起来
+  const flash = bump(b, 0.07, 0.12, 0.3);
+  if (flash > 0.01) {
+    const k = flash * 0.9;
+    for (let o = 0; o < g.bg.length; o += 4) {
+      g.bg[o] = BG[0] + (255 - BG[0]) * k;
+      g.bg[o + 1] = BG[1] + (226 - BG[1]) * k;
+      g.bg[o + 2] = BG[2] + (240 - BG[2]) * k;
+    }
+  }
+
+  // 爆之前那一下：一圈速度线被吸向 O
+  const suck = 1 - smooth(0, 0.11, b);
+  if (suck > 0.02) {
+    for (let k = 0; k < 80; k += 1) {
+      const a = hash1(k * 3 + 1) * Math.PI * 2;
+      const phase = (hash1(k * 3 + 2) + b * 10) % 1;
+      const glyph = lineGlyph(Math.cos(a) / g.cw, Math.sin(a) / g.ch);
+      for (let s = 0; s < 3; s += 1) {
+        const r = (1 - phase) * 0.8 + 0.03 + s * g.ch * 1.2;
+        const x = ox + Math.cos(a) * r * 1.15;
+        const y = oy + Math.sin(a) * r;
+        const v = suck * phase * (1 - s * 0.3);
+        walk(g, x, y, x, y, (i) => put(g, i, glyph, 255 * v, 190 * v, 225 * v));
       }
     }
   }
-  // 碎屑：往外飞，越来越暗
-  for (let k = 0; k < 90; k += 1) {
-    const a = hash1(k * 3 + 1) * Math.PI * 2;
-    const speed = 0.12 + 0.4 * hash1(k * 3 + 2);
-    const r = speed * ease;
-    const x = ox + Math.cos(a) * r * (0.9 + 0.2 * hash1(k));
-    const y = oy + Math.sin(a) * r * 0.85;
-    const c = pick(b + hash1(k * 5) * 0.3);
-    const glyph = [G.dot, G.comma, G.quote, G.star, G.plus][(hash1(k * 7) * 5) | 0];
-    walk(g, x, y, x, y, (i) => put(g, i, glyph, c[0] * life + 20, c[1] * life + 10, c[2] * life + 25));
+
+  // 从 O 劈出去的裂纹：一下子窜到屏幕边上，白得发亮，然后碎掉
+  const boltGrow = smooth(0.09, 0.3, b);
+  const boltFade = smooth(0.4, 0.78, b);
+  if (boltGrow > 0 && boltFade < 1) {
+    const hot = 1 - smooth(0.2, 0.6, b);
+    const color: Rgb = [255, 170 + 85 * hot, 205 + 50 * hot];
+    bolts.forEach((bolt, k) => drawPath(g, bolt, clamp01(boltGrow * 1.25 - (k % 5) * 0.04), boltFade, frame + k * 7, color, false));
   }
+
+  // 火球：边缘翻滚，里面白热，越往后越凉，最后散成烟
+  const grow = 1 - (1 - smooth(0.08, 0.6, b)) ** 2;
+  const cool = 1 - smooth(0.4, 0.92, b);
+  const radius = 0.04 + 0.4 * grow;
+  if (b > 0.08 && cool > 0.02) {
+    const box = radius * 1.4;
+    const x0 = Math.max(0, Math.floor((ox - box * 1.15 + g.aspect / 2) / g.cw));
+    const x1 = Math.min(g.cols - 1, Math.ceil((ox + box * 1.15 + g.aspect / 2) / g.cw));
+    const y0 = Math.max(0, Math.floor((g.half - oy - box) / g.ch));
+    const y1 = Math.min(g.rows - 1, Math.ceil((g.half - oy + box) / g.ch));
+    for (let y = y0; y <= y1; y += 1) {
+      for (let x = x0; x <= x1; x += 1) {
+        const dx = (g.ox[x] - ox) / 1.12;
+        const dy = g.oy[y] - oy;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const edge = radius * (0.72 + 0.56 * fbm2(angle * 2.4 + 7, b * 7 + frame * 0.03, 3));
+        if (d >= edge) continue;
+        const inside = 1 - d / edge;
+        const n = fbm2(dx * 15 + b * 9, dy * 15 - b * 6 - frame * 0.025, 3);
+        const heat = (inside * 1.3 + (n - 0.5) * 0.8) * (0.3 + 0.7 * cool);
+        if (heat < 0.1 + (1 - cool) * 0.22) continue;
+        const i = y * g.cols + x;
+        const c = heatColor(heat);
+        const glyph = heat > 0.82 ? G.at : heat > 0.66 ? G.hash : heat > 0.5 ? gi('%') : heat > 0.38 ? G.star : heat > 0.26 ? G.plus : heat > 0.16 ? G.colon : G.dot;
+        put(g, i, glyph, c[0], c[1], c[2]);
+        tint(g, i, c[0] * 0.42 * heat, c[1] * 0.42 * heat, c[2] * 0.42 * heat);
+      }
+    }
+  }
+
+  // 冲击波：三圈，各有各的速度；最外面那圈红绿蓝错开一点
+  const waves: [number, number, number][] = [
+    [0.1, 1.15, 1],
+    [0.16, 0.72, 0.8],
+    [0.24, 0.46, 0.6],
+  ];
+  waves.forEach(([start, speed, strength], k) => {
+    const t = clamp01((b - start) / (1 - start));
+    if (t <= 0) return;
+    const r = (1 - (1 - t) ** 2.4) * reach * speed;
+    const life = strength * (1 - smooth(0.55, 1, t));
+    if (life < 0.03) return;
+    if (k === 0) {
+      ring(g, ox, oy, r - g.ch * 2.4, [90 * life, 120 * life, 255 * life], 0.25, frame);
+      ring(g, ox, oy, r - g.ch * 1.2, [80 * life, 255 * life, 190 * life], 0.15, frame + 1);
+      ring(g, ox, oy, r, [255 * life, 240 * life, 250 * life], 0, frame);
+    } else {
+      ring(g, ox, oy, r, [255 * life, 150 * life, 190 * life], 0.3, frame + k);
+      ring(g, ox, oy, r - g.ch * 1.1, [255 * life * 0.6, 110 * life * 0.6, 60 * life * 0.6], 0.5, frame + k + 3);
+    }
+  });
+
+  // 碎屑：往外飞、带拖尾、被重力拽下来；每五个里有两个是页面自己的字
+  const out = 1 - (1 - b) ** 2.2;
+  for (let k = 0; k < 380; k += 1) {
+    const a = hash1(k * 3 + 1) * Math.PI * 2;
+    const speed = 0.2 + 1.25 * hash1(k * 3 + 2) ** 1.6;
+    const weight = 0.35 + hash1(k * 9) * 0.6;
+    const chunk = k % 5 < 2;
+    const glyph = chunk ? CHUNKS[(hash1(k * 7) * CHUNKS.length) | 0] : DUST[(hash1(k * 7) * DUST.length) | 0];
+    const c = heatColor(1.05 - b * 1.25 + hash1(k * 5) * 0.3);
+    const life = 1 - smooth(0.75, 1, b);
+    for (let s = 0; s < (chunk ? 1 : 4); s += 1) {
+      const e = Math.max(0, out - s * 0.018 * (1 - b));
+      const x = ox + Math.cos(a) * speed * e * 1.12;
+      const y = oy + Math.sin(a) * speed * e - weight * 0.55 * e * e;
+      const v = life * (1 - s * 0.25);
+      walk(g, x, y, x, y, (i) => put(g, i, s === 0 ? glyph : G.dot, c[0] * v + 14, c[1] * v + 10, c[2] * v + 18));
+    }
+  }
+
+  // 余烬：火球散了以后，零零星星地往下飘
+  const ember = smooth(0.4, 0.6, b) * (1 - smooth(0.85, 1, b));
+  if (ember > 0.02) {
+    for (let k = 0; k < 70; k += 1) {
+      if (hash2(k, frame >> 1) > 0.75) continue;
+      const x = ox + (hash1(k * 4 + 1) - 0.5) * 1.1;
+      const y = oy + (hash1(k * 4 + 2) - 0.35) * 0.7 - (b - 0.4) * (0.25 + hash1(k * 4 + 3) * 0.5);
+      const v = ember * (0.5 + 0.5 * hash2(k, frame));
+      walk(g, x, y, x, y, (i) => put(g, i, hash1(k) < 0.5 ? G.dot : G.comma, 255 * v, 140 * v, 70 * v));
+    }
+  }
+
+  return bump(b, 0.07, 0.15, 0.62);
 }

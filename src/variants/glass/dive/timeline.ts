@@ -2,7 +2,6 @@
 // 开场：页脚的字一列列掉光 → 黑屏上冒出三处裂纹 → 三道裂纹爬向粉色的 O → O 往里一收、炸开 → 只剩一颗粉色的 O。
 // 然后是放大（zz 从 ZOOM_START 算起）：每一站在 STATIONS 里，读数（视野有多高）按 SCALE_KEYS 走。
 
-import { smooth } from './grid';
 
 export const FALL_END = 72;
 /** 三处裂纹各自长出来的那一段 */
@@ -18,6 +17,53 @@ export const BOOM: [number, number] = [140, 174];
 export const ZOOM_START = 182;
 export const ZOOM_LEN = 1060;
 export const TRACK = ZOOM_START + ZOOM_LEN;
+
+/**
+ * 上面这些（以及场景里写死的位置）都是「故事位置」。真正要滑多远由这张表决定：
+ * [滚动距离 svh, 故事位置]，中间按直线插。一段的斜率越小，就要滑得越久——
+ * 页脚先原样钉一会儿再开始掉；每一站最有看头的地方都多给了一些滚动距离。
+ */
+const Z = ZOOM_START;
+export const PACE: [number, number][] = [
+  [0, 0],
+  // 页脚先原样待着，多滑一段才开始掉
+  [80, 0],
+  [220, FALL_END],
+  [350, 134],
+  // 收拢、爆炸、烟散开
+  [500, 176],
+  [530, Z],
+  [620, Z + 64],
+  [680, Z + 100],
+  [730, Z + 122],
+  [785, Z + 152],
+  [835, Z + 182],
+  [885, Z + 212],
+  [955, Z + 252],
+  [1005, Z + 282],
+  // 她通电
+  [1060, Z + 300],
+  // 她蹦着，镜头慢慢靠近
+  [1180, Z + 330],
+  [1270, Z + 380],
+  // 整块裸片的全貌
+  [1335, Z + 392],
+  [1400, Z + 440],
+  [1490, Z + 490],
+  [1585, Z + 535],
+  [1695, Z + 590],
+  [1785, Z + 635],
+  [1895, Z + 690],
+  [1955, Z + 730],
+  [2055, Z + 775],
+  [2170, Z + 830],
+  [2230, Z + 865],
+  [2295, Z + 905],
+  [2405, Z + 960],
+  [2545, TRACK],
+];
+/** 这一段一共要滑多远（svh） */
+export const SCROLL = PACE[PACE.length - 1][0];
 
 /** 画面的分段（zz）：相邻两段在交界处溶解过去 */
 export const SHOTS = [
@@ -78,7 +124,10 @@ export const SCALE_KEYS: [number, number][] = [
   [212, -1.6],
   [252, -1.92],
   [330, -2.1],
-  [380, -3.0],
+  // 钻过黄星星（0.75 mm）落到裸片上：先看到整块裸片（12 mm），再往里放大
+  [379.9, -3.12],
+  [380, -1.92],
+  [392, -2.05],
   [440, -4.3],
   [490, -5.7],
   [535, -6.7],
@@ -141,27 +190,5 @@ export function formatScale(log: number) {
   return `${mantissa.toFixed(1)}e${exponent} m`;
 }
 
-/** 滚轮在哪几段额外放慢（倍率），两头各有一小段过渡 */
-const SLOW: { from: number; to: number; factor: number }[] = [
-  { from: 6, to: FALL_END, factor: 0.8 },
-  { from: IMPACTS[0][0], to: BOOM[1], factor: 0.7 },
-  { from: ZOOM_START, to: ZOOM_START + 252, factor: 0.8 },
-  // 芯片顶盖：她通电、蹦，镜头再钻进黄星星
-  { from: ZOOM_START + 252, to: ZOOM_START + 380, factor: 0.5 },
-  { from: ZOOM_START + 380, to: ZOOM_START + 690, factor: 0.8 },
-  // 原子里的空旷：一路滑过去
-  { from: ZOOM_START + 730, to: ZOOM_START + 865, factor: 0.8 },
-  // 夸克以下那 16 个数量级：同上
-  { from: ZOOM_START + 905, to: TRACK, factor: 0.75 },
-];
-const RAMP = 6;
-
-export function wheelSpeed(z: number) {
-  if (z < -RAMP || z > TRACK + RAMP) return 1;
-  let speed = 1;
-  for (const zone of SLOW) {
-    const inside = smooth(zone.from - RAMP, zone.from, z) * (1 - smooth(zone.to, zone.to + RAMP, z));
-    speed = Math.min(speed, 1 - (1 - zone.factor) * inside);
-  }
-  return speed;
-}
+/** 滑了 scroll（svh）以后，故事走到哪了 */
+export const storyAt = (scroll: number) => interpolate(PACE, scroll);

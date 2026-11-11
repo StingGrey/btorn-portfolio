@@ -241,7 +241,7 @@ export async function createDiveRenderer(canvas: HTMLCanvasElement, options: { f
     const wDev = Math.max(1, Math.round(cssWidth * dpr));
     const hDev = Math.max(1, Math.round(cssHeight * dpr));
     // 一屏大约 72 行字；字太小看不清、太大又太粗，夹在 9..15 CSS 像素之间
-    const cellCss = Math.min(15, Math.max(9, cssHeight / 72));
+    const cellCss = Math.min(9, Math.max(6, cssHeight / 128));
     const ch = Math.max(8, Math.round(cellCss * dpr));
     const cw = Math.max(4, Math.round(ch * 0.5));
     const cols = Math.max(1, Math.floor(wDev / cw));

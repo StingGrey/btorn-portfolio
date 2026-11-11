@@ -1,42 +1,109 @@
 // 芯片里面：裸片 → 金属互连层 → 标准单元（逻辑门） → 一个晶体管（剖面） → 硅晶格。
 // 每个场景按读数（timeline 的 SCALE_KEYS）定视野，镜头对准一个固定的点放大。
 
-import { G, RAMP, gi } from '../charset';
-import { BG, fbm2, hash1, hash2, hash3, noise2, put, smooth, threshold, tint, walk, type Grid } from '../grid';
-import { logScaleAt } from '../timeline';
+import { G, RAMP } from '../charset';
+import { fbm2, hash1, hash2, hash3, noise2, put, smooth, threshold, tint, walk, type Grid } from '../grid';
+import { INK, callout, legend, note, status } from '../notes';
+import { interpolate, logScaleAt } from '../timeline';
 
 /** 视野高度换成场景自己的单位（unit = 一个单位多少米） */
 const fovIn = (zz: number, unit: number) => 10 ** logScaleAt(zz) / unit;
 
-/** 在屏幕坐标 (x, y) 居中写一行字 */
-function label(g: Grid, x: number, y: number, text: string, r: number, gr: number, b: number) {
-  const col = Math.floor((x + g.aspect / 2) / g.cw - text.length / 2);
-  const row = Math.floor((g.half - y) / g.ch);
-  if (row < 0 || row >= g.rows) return;
-  for (let k = 0; k < text.length; k += 1) {
-    const c = col + k;
-    if (c < 0 || c >= g.cols) continue;
-    const i = row * g.cols + c;
-    put(g, i, gi(text[k]), r, gr, b);
-    tint(g, i, BG[0], BG[1], BG[2]);
+/* ====================== 裸片 ====================== */
+
+type Block = { name: string; kind: 'core' | 'sram' | 'gpu' | 'dream' | 'io'; x0: number; y0: number; x1: number; y1: number };
+/** 整块裸片的平面图（毫米，中心为原点，边长 10）：四个核心、三级缓存、GPU、I/O，四周一圈焊盘 */
+const DIE: Block[] = [
+  { name: 'CORE 0', kind: 'core', x0: -4.3, y0: 2.3, x1: -2.25, y1: 4.3 },
+  { name: 'CORE 1', kind: 'core', x0: -2.15, y0: 2.3, x1: -0.1, y1: 4.3 },
+  { name: 'CORE 2', kind: 'core', x0: -4.3, y0: 0.2, x1: -2.25, y1: 2.2 },
+  { name: 'CORE 3', kind: 'core', x0: -2.15, y0: 0.2, x1: -0.1, y1: 2.2 },
+  { name: 'L3 CACHE', kind: 'sram', x0: 0.1, y0: 1.6, x1: 4.3, y1: 4.3 },
+  { name: 'GPU', kind: 'gpu', x0: -4.3, y0: -4.3, x1: 1.4, y1: 0 },
+  { name: 'DREAM ENGINE', kind: 'dream', x0: 1.6, y0: -1.6, x1: 4.3, y1: 1.4 },
+  { name: 'I/O', kind: 'io', x0: 1.6, y0: -4.3, x1: 4.3, y1: -1.8 },
+];
+/** 镜头最后钻进去的地方：1 号核心里的一片逻辑电路 */
+const DIE_T = { x: -0.8, y: 3.25 };
+/** 先让整块裸片在屏幕上多待一会儿（只慢慢推近一点），再一路放大进去 */
+const DIE_KEYS: [number, number][] = [
+  [380, Math.log10(12)],
+  [392, Math.log10(9)],
+  [440, Math.log10(0.05)],
+];
+
+/** SRAM：一格一格的子阵列，中间夹着译码器、灵敏放大器；够近了能看见一个个存储单元 */
+function sramCell(g: Grid, i: number, wx: number, wy: number, fp: number, film: number) {
+  const fx = wx / 0.12 - Math.floor(wx / 0.12);
+  const fy = wy / 0.08 - Math.floor(wy / 0.08);
+  if (fp < 0.03 && (fx < 0.06 || fy < 0.08)) {
+    put(g, i, G.eq, 190 * film, 170 * film, 110 * film);
+    tint(g, i, 60, 52, 30);
+  } else if (fp < 0.0005) {
+    const bx = wx / 0.0006 - Math.floor(wx / 0.0006);
+    const by = wy / 0.0003 - Math.floor(wy / 0.0003);
+    put(g, i, bx < 0.3 || by < 0.35 ? G.plus : G.dot, 170 * film, 140 * film, 255 * film);
+    tint(g, i, 46, 36, 90);
+  } else {
+    put(g, i, G.medium, 140 * film, 112 * film, 230 * film);
+    tint(g, i, 40, 32, 80);
   }
 }
 
-/* ====================== 裸片 ====================== */
-
-const DIE_T = { x: 0.21, y: 0.14 };
+/** 随机逻辑：斑斑驳驳；放大以后能看出一截截走线 */
+function logicCell(g: Grid, i: number, wx: number, wy: number, fp: number, film: number, r: number, gr: number, b: number) {
+  if (fp < 0.002) {
+    const row = Math.floor(wy / 0.0012);
+    const along = wx / 0.0009 + hash1(row) * 7;
+    const seg = Math.floor(along);
+    const fy = wy / 0.0012 - row;
+    if (hash3(row, seg, 5) < 0.55 && fy > 0.35 && fy < 0.65) {
+      put(g, i, G.h, 225, 150, 90);
+      tint(g, i, 50, 34, 20);
+      return;
+    }
+    if (hash3(seg, row, 9) < 0.18 && Math.abs(along - seg - 0.5) < 0.12) {
+      put(g, i, G.v, 200, 130, 80);
+      return;
+    }
+  }
+  const v = 0.35 + fbm2(wx * 60, wy * 60, 3) * 0.7;
+  put(g, i, RAMP[Math.min(9, Math.floor(v * 7) + 1)], r * film * v, gr * film * v, b * film * v);
+  tint(g, i, r * 0.2 * film, gr * 0.2 * film, b * 0.2 * film);
+}
 
 export function drawDie(g: Grid, zz: number) {
-  const fov = fovIn(zz, 1e-3);
+  const fov = 10 ** interpolate(DIE_KEYS, zz);
   const fp = g.ch * fov;
-  // 顶层的电源网格：放大到它比好几格还宽，就当镜头已经钻到它下面去了
-  const grid = 1 - smooth(2.5, 7, 0.006 / fp);
+  // 先看整块裸片，再朝 1 号核心里推过去
+  const aim = smooth(391, 408, zz);
+  const cx = DIE_T.x * aim;
+  const cy = DIE_T.y * aim;
+  // 顶层的电源网格：够近才看得见；再近到它比好几格还宽，就当镜头已经钻到它下面去了
+  const grid = smooth(0.05, 0.02, fp) * (1 - smooth(2.5, 7, 0.006 / fp));
   for (let y = 0; y < g.rows; y += 1) {
-    const wy = DIE_T.y + g.oy[y] * fov;
+    const wy = cy + g.oy[y] * fov;
     for (let x = 0; x < g.cols; x += 1) {
-      const wx = DIE_T.x + g.ox[x] * fov;
+      const wx = cx + g.ox[x] * fov;
       const i = y * g.cols + x;
+      const ax = Math.abs(wx);
+      const ay = Math.abs(wy);
+      if (ax > 5 || ay > 5) {
+        // 裸片外面：封装里的底填料，暗暗的
+        if (hash2(Math.floor(wx * 3), Math.floor(wy * 3)) < 0.1) put(g, i, G.dot, 46, 44, 60);
+        continue;
+      }
       const film = 0.82 + 0.32 * noise2(wx * 2.6 + 3, wy * 2.6);
+      if (ax > 4.6 || ay > 4.6) {
+        // 四周一圈焊盘
+        const along = (ax > 4.6 ? wy : wx) / 0.42;
+        const pad = Math.abs(along - Math.round(along)) < 0.3 && Math.max(ax, ay) < 4.92 && Math.min(ax, ay) < 4.6;
+        if (pad) {
+          put(g, i, G.full, 236, 200, 110);
+          tint(g, i, 90, 70, 30);
+        } else tint(g, i, 26, 22, 38);
+        continue;
+      }
       if (grid > 0.02) {
         const px = Math.abs(wx / 0.1 - Math.round(wx / 0.1)) * 0.1;
         const py = Math.abs(wy / 0.1 - Math.round(wy / 0.1)) * 0.1;
@@ -46,61 +113,57 @@ export function drawDie(g: Grid, zz: number) {
           continue;
         }
       }
-      if (Math.abs(wx - 0.03) < 0.012 || (wx > 0.03 && Math.abs(wy + 0.21) < 0.012)) {
-        // 两个区块之间的走线通道
-        if (hash2(Math.floor(wx * 900), Math.floor(wy * 900)) < 0.25) put(g, i, G.dot, 70, 60, 90);
+      let block: Block | null = null;
+      for (const candidate of DIE) {
+        if (wx >= candidate.x0 && wx < candidate.x1 && wy >= candidate.y0 && wy < candidate.y1) {
+          block = candidate;
+          break;
+        }
+      }
+      if (!block) {
+        // 区块之间的走线通道
+        if (hash2(Math.floor(wx * 900), Math.floor(wy * 900)) < 0.2) put(g, i, G.dot, 70, 60, 90);
         tint(g, i, 20, 16, 30);
         continue;
       }
-      if (wx < 0.03) {
-        // 左边：一大片 SRAM 缓存，一格一格的子阵列，中间夹着译码器、灵敏放大器
-        const fx = wx / 0.12 - Math.floor(wx / 0.12);
-        const fy = wy / 0.08 - Math.floor(wy / 0.08);
-        if (fx < 0.06 || fy < 0.08) {
-          put(g, i, G.eq, 190 * film, 170 * film, 110 * film);
-          tint(g, i, 60, 52, 30);
-        } else if (fp < 0.0005) {
-          const bx = wx / 0.0006 - Math.floor(wx / 0.0006);
-          const by = wy / 0.0003 - Math.floor(wy / 0.0003);
-          put(g, i, bx < 0.3 || by < 0.35 ? G.plus : G.dot, 170 * film, 140 * film, 255 * film);
-          tint(g, i, 46, 36, 90);
-        } else {
-          put(g, i, G.medium, 140 * film, 112 * film, 230 * film);
-          tint(g, i, 40, 32, 80);
-        }
-        continue;
+      const u = (wx - block.x0) / (block.x1 - block.x0);
+      const v = (wy - block.y0) / (block.y1 - block.y0);
+      if (block.kind === 'sram') sramCell(g, i, wx, wy, fp, film);
+      else if (block.kind === 'core') {
+        // 一个核心：左边一条一、二级缓存，底下一条数据通路，其余是逻辑
+        if (u < 0.3) sramCell(g, i, wx, wy, fp, film);
+        else if (v < 0.22) {
+          const stripe = Math.floor(wy / 0.01);
+          const k = stripe % 2 === 0 ? 1 : 0.7;
+          put(g, i, Math.abs(wx / 0.05 - Math.round(wx / 0.05)) < 0.04 ? G.v : stripe % 2 === 0 ? G.dash : G.eq, 70 * film * k, 190 * film * k, 190 * film * k);
+          tint(g, i, 16, 46, 48);
+        } else logicCell(g, i, wx, wy, fp, film, 150, 175, 90);
+      } else if (block.kind === 'gpu') {
+        // GPU：一大片一模一样的小单元
+        const tx = wx / 0.45 - Math.floor(wx / 0.45);
+        const ty = wy / 0.45 - Math.floor(wy / 0.45);
+        if (tx < 0.08 || ty < 0.08) tint(g, i, 30, 20, 14);
+        else logicCell(g, i, wx, wy, fp, film, 240, 160, 80);
+      } else if (block.kind === 'dream') logicCell(g, i, wx, wy, fp, film, 250, 130, 180);
+      else {
+        // I/O：粗粗的几块模拟电路
+        const tx = wx / 0.6 - Math.floor(wx / 0.6);
+        const ty = wy / 0.5 - Math.floor(wy / 0.5);
+        const body = tx > 0.12 && tx < 0.88 && ty > 0.15 && ty < 0.85;
+        put(g, i, body ? G.hash : G.dot, 130 * film, 150 * film, 205 * film);
+        tint(g, i, body ? 30 : 16, body ? 36 : 18, body ? 60 : 32);
       }
-      if (wy > -0.21) {
-        // 右上：随机逻辑，斑斑驳驳；放大以后能看出一截截走线
-        const n = fbm2(wx * 60, wy * 60, 3);
-        if (fp < 0.002) {
-          const row = Math.floor(wy / 0.0012);
-          const seg = Math.floor(wx / 0.0009 + hash1(row) * 7);
-          const on = hash3(row, seg, 5) < 0.55;
-          const vertical = hash3(seg, row, 9) < 0.18;
-          const fy = wy / 0.0012 - row;
-          if (on && fy > 0.35 && fy < 0.65) {
-            put(g, i, G.h, 225, 150, 90);
-            tint(g, i, 50, 34, 20);
-            continue;
-          }
-          if (vertical && Math.abs(wx / 0.0009 + hash1(row) * 7 - seg - 0.5) < 0.12) {
-            put(g, i, G.v, 200, 130, 80);
-            continue;
-          }
-        }
-        const v = 0.35 + n * 0.7;
-        put(g, i, RAMP[Math.min(9, Math.floor(v * 7) + 1)], 150 * film * v, 175 * film * v, 90 * film * v);
-        tint(g, i, 30 * film, 40 * film, 20 * film);
-        continue;
-      }
-      // 右下：数据通路 / 寄存器堆，一条条横着的位切片
-      const stripe = Math.floor(wy / 0.01);
-      const bus = Math.abs(wx / 0.05 - Math.round(wx / 0.05)) < 0.04;
-      const k = stripe % 2 === 0 ? 1 : 0.7;
-      put(g, i, bus ? G.v : stripe % 2 === 0 ? G.dash : G.eq, 70 * film * k, 190 * film * k, 190 * film * k);
-      tint(g, i, 16, 46, 48);
     }
+  }
+  // 每一块写上名字（放得下才写）
+  const names = 1 - smooth(1.2, 0.5, fov);
+  if (names > 0.02) {
+    DIE.forEach((block) => {
+      const wide = (block.x1 - block.x0) / (fp * (g.cw / g.ch));
+      const tall = (block.y1 - block.y0) / fp;
+      if (wide < block.name.length + 2 || tall < 3) return;
+      note(g, ((block.x0 + block.x1) / 2 - cx) / fov, ((block.y0 + block.y1) / 2 - cy) / fov, block.name, INK, 0.5, names);
+    });
   }
 }
 
@@ -157,6 +220,31 @@ export function drawMetal(g: Grid, zz: number) {
       }
     }
   }
+  // 最上面那两层够粗的线上写上是第几层金属（M8 在最上面，越往下线越细）
+  let named = 0;
+  for (let k = 0; k < METAL.length && named < 2; k += 1) {
+    const pitch = METAL[k];
+    if (alphas[k] < 0.6 || (pitch * 0.46) / fp < 2.4) continue;
+    named += 1;
+    const horizontal = k % 2 === 0;
+    const offset = horizontal ? 0.37 : -0.21;
+    const reach = (horizontal ? g.half : g.aspect / 2) * fov;
+    for (let track = Math.floor((offset - reach) / pitch); track <= Math.ceil((offset + reach) / pitch); track += 1) {
+      const across = ((track + 0.5) * pitch - offset) / fov;
+      const along = (hash2(track, k + 40) - 0.5) * (horizontal ? g.aspect : g.half * 2) * 0.7;
+      const sx = horizontal ? along : across;
+      const sy = horizontal ? across : along;
+      const col = Math.floor((sx + g.aspect / 2) / g.cw);
+      const row = Math.floor((g.half - sy) / g.ch);
+      if (col < 1 || row < 1 || col >= g.cols - 3 || row >= g.rows - 1) continue;
+      const glyph = g.fg[(row * g.cols + col) * 4 + 3];
+      if (glyph === G.full || glyph === G.dark) note(g, sx, sy, `M${8 - k}`, [255, 226, 170], 0);
+    }
+  }
+  legend(g, [
+    [G.full, [228, 152, 92], 'copper wire'],
+    [G.square, [255, 228, 160], 'via: links two layers'],
+  ]);
 }
 
 /* ====================== 标准单元 ====================== */
@@ -275,10 +363,20 @@ export function drawCells(g: Grid, zz: number) {
         const sx = (cell.x0 + cell.width / 2 - CELL_T.x) / fov;
         if (Math.abs(sx) > g.aspect / 2 + 0.2) return;
         const sy = (row * ROW + ROW / 2 - CELL_T.y) / fov;
-        label(g, sx, sy, cell.name, 240, 236, 255);
+        note(g, sx, sy, cell.name, [240, 236, 255]);
       });
     }
+    // 电源轨：一条接电源、一条接地，交替着来
+    for (let rail = Math.floor(bottom / ROW); rail <= Math.ceil(top / ROW); rail += 1) {
+      note(g, -g.aspect / 2 + 0.16, (rail * ROW - CELL_T.y) / fov, rail % 2 === 0 ? 'GND' : 'VDD', [190, 205, 255], 0);
+    }
   }
+  legend(g, [
+    [G.full, [236, 78, 78], 'gate (polysilicon)'],
+    [G.medium, [70, 200, 110], 'silicon the current flows through'],
+    [G.hh, [96, 128, 245], 'metal: power and wiring'],
+    [G.square, [230, 232, 240], 'contact'],
+  ]);
 }
 
 /* ====================== 一个晶体管（GAA 纳米片，剖面） ====================== */
@@ -298,57 +396,80 @@ export function drawTransistor(g: Grid, zz: number) {
       const wx = cx + g.ox[x] * fov;
       const i = y * g.cols + x;
       const ax = Math.abs(wx);
-      let sheet = -1;
-      for (let s = 0; s < 3; s += 1) if (Math.abs(wy - SHEETS[s]) < 3 && ax < 24) sheet = s;
-      const grain = 0.88 + 0.24 * noise2(wx * 0.9, wy * 0.9);
-      if (sheet >= 0) {
-        put(g, i, fp > 1.2 ? G.full : G.dark, 150 * grain, 176 * grain, 218 * grain);
-        tint(g, i, 50, 60, 80);
+      // 离最近那片硅的表面有多远（负的 = 在硅里面）
+      let surface = 1e9;
+      for (let s = 0; s < 3; s += 1) surface = Math.min(surface, Math.abs(wy - SHEETS[s]) - 3);
+      const grain = 0.9 + 0.2 * noise2(wx * 0.9, wy * 0.9);
+      if (surface < 0 && ax < 24) {
+        // 硅片：一格一格的晶格纹理；栅极底下那一段是沟道，通电时泛青
+        const channel = ax < 9 && on;
+        const dotted = fp < 0.6 && ((Math.floor(wx / 0.7) + Math.floor(wy / 0.7)) & 1) === 0;
+        const rim = surface > -0.7;
+        const k = grain * (rim ? 1.12 : 1);
+        put(g, i, dotted ? G.dark : G.full, (channel ? 120 : 150) * k, (channel ? 226 : 176) * k, (channel ? 250 : 218) * k);
+        tint(g, i, channel ? 30 : 50, channel ? 80 : 60, channel ? 96 : 80);
         continue;
       }
-      // 栅极：把三片硅整个包住；外面一层薄薄的高 k 介质
       if (ax < 9 && wy > -34 && wy < 20) {
-        let shell = false;
-        for (let s = 0; s < 3; s += 1) if (Math.abs(wy - SHEETS[s]) < 4.5) shell = true;
-        if (shell) {
-          put(g, i, G.colon, 190, 120, 240);
-          tint(g, i, 50, 26, 70);
+        // 栅极：紧贴硅片一层高 k 绝缘层，外面一层功函数金属，中间才是填进去的金属
+        if (surface < 1.5) {
+          put(g, i, G.colon, 196, 126, 244);
+          tint(g, i, 54, 28, 76);
+        } else if (surface < 3 || ax > 7.6 || wy < -32.4) {
+          const k = on ? 1.1 : 0.85;
+          put(g, i, G.dark, 190 * k, 138 * k, 66 * k);
+          tint(g, i, 60 * k, 40 * k, 16 * k);
         } else {
-          const k = on ? 1.08 : 0.82;
-          put(g, i, fp > 1.2 ? G.full : G.hash, 236 * k, 192 * k, 92 * k);
-          tint(g, i, 80 * k, 62 * k, 24 * k);
+          const k = (on ? 1.1 : 0.8) * (0.92 + 0.08 * Math.sin(wx * 2.2));
+          put(g, i, G.full, 240 * k, 198 * k, 96 * k);
+          tint(g, i, 84 * k, 64 * k, 24 * k);
         }
         continue;
       }
-      if (ax < 12 && wy > -34 && wy < 14) {
-        put(g, i, G.medium, 140, 140, 156);
-        continue;
-      }
-      if (ax < 13 && ax >= 9 && wy >= 14 && wy < 30) {
-        put(g, i, G.medium, 140, 140, 156);
+      if ((ax < 12 && wy > -34 && wy < 14) || (ax < 13 && wy >= 14 && wy < 30)) {
+        // 侧墙：把栅极和源漏隔开
+        put(g, i, G.medium, 146, 146, 164);
+        tint(g, i, 40, 40, 50);
         continue;
       }
       if (ax < 9 && wy >= 20 && wy < 30) {
-        put(g, i, G.light, 90, 90, 112);
+        put(g, i, G.light, 96, 96, 120);
         continue;
       }
-      if (ax < 5 && wy >= 30 && wy < 52) {
-        put(g, i, G.full, 178, 178, 198);
+      if (ax < 5.5 && wy >= 30 && wy < 54) {
+        // 栅极的接触孔：一圈暗的衬层，里面是银白的金属
+        const liner = ax > 4.2 || wy < 31.4;
+        put(g, i, liner ? G.dark : G.full, liner ? 96 : 186, liner ? 96 : 188, liner ? 120 : 208);
         continue;
       }
-      // 源 / 漏：外延长出来的，顶上是斜面
+      // 源 / 漏：外延长出来的，顶上是斜面，一道一道的晶面
       if (ax >= 12 && ax < 46 && wy > -34 && wy < 16 - 0.4 * Math.abs(ax - 29)) {
-        put(g, i, fp > 1.2 ? G.full : G.medium, 92 * grain, 212 * grain, 134 * grain);
-        tint(g, i, 20, 56, 32);
+        const facet = 0.86 + 0.14 * Math.sin((ax + wy) * 0.55);
+        const depth = 0.78 + 0.22 * smooth(-34, 10, wy);
+        const k = grain * facet * depth;
+        put(g, i, fp > 1.2 ? G.full : G.dark, 92 * k, 216 * k, 136 * k);
+        tint(g, i, 18, 56, 32);
         continue;
       }
-      if (ax >= 20 && ax < 37 && wy >= 8 && wy < 52) {
-        put(g, i, G.full, 176, 176, 196);
+      if (ax >= 20 && ax < 37 && wy >= 8 && wy < 54) {
+        const liner = ax < 21.3 || ax > 35.7 || wy < 9.4;
+        const k = 0.88 + 0.12 * smooth(8, 54, wy);
+        put(g, i, liner ? G.dark : G.full, liner ? 96 : 184 * k, liner ? 96 : 186 * k, liner ? 120 : 208 * k);
         continue;
       }
       if (wy <= -34) {
-        put(g, i, hash2(Math.floor(wx), Math.floor(wy)) < 0.4 ? G.light : G.dot, 96, 106, 140);
-        tint(g, i, 24, 26, 40);
+        if (ax < 26 && wy > -46) {
+          // 硅片底下的硅基座
+          put(g, i, G.dark, 120 * grain, 140 * grain, 180 * grain);
+          tint(g, i, 36, 42, 60);
+        } else if (wy > -52) {
+          // 两边的隔离氧化层
+          put(g, i, G.light, 80, 96, 136);
+          tint(g, i, 20, 24, 40);
+        } else {
+          put(g, i, hash2(Math.floor(wx), Math.floor(wy)) < 0.4 ? G.light : G.dot, 96, 106, 140);
+          tint(g, i, 24, 26, 40);
+        }
         continue;
       }
       if (hash2(Math.floor(wx / 2), Math.floor(wy / 2)) < 0.03) put(g, i, G.dot, 60, 50, 90);
@@ -357,21 +478,30 @@ export function drawTransistor(g: Grid, zz: number) {
   // 电子：开的时候从源穿过三片硅流到漏
   if (on) {
     for (let s = 0; s < 3; s += 1) {
-      for (let p = 0; p < 9; p += 1) {
-        const ex = -30 + ((t * 26 + p * 6.7 + s * 2.3) % 60);
-        const ey = SHEETS[s] + (hash1(p * 7 + s) - 0.5) * 3;
+      for (let p = 0; p < 11; p += 1) {
+        const ex = -30 + ((t * 26 + p * 5.5 + s * 2.3) % 60);
+        const ey = SHEETS[s] + (hash1(p * 7 + s) - 0.5) * 3.4;
         const sx = (ex - cx) / fov;
         const sy = (ey - cy) / fov;
-        walk(g, sx, sy, sx, sy, (i) => put(g, i, fp < 0.4 ? G.disc : G.o, 140, 248, 255));
+        walk(g, sx, sy, sx + g.cw, sy, (i) => put(g, i, fp < 0.5 ? G.disc : G.o, 170, 252, 255));
       }
     }
   }
   if (fov > 60) {
-    const top = Math.min(0.44, (56 - cy) / fov);
-    label(g, (-28 - cx) / fov, top, 'SOURCE', 220, 214, 240);
-    label(g, (0 - cx) / fov, top, 'GATE', 255, 210, 120);
-    label(g, (28 - cx) / fov, top, 'DRAIN', 220, 214, 240);
+    const top = Math.min(g.half - 0.08, (56 - cy) / fov);
+    note(g, (-28 - cx) / fov, top, 'SOURCE', [220, 214, 240]);
+    note(g, (0 - cx) / fov, top, 'GATE', [255, 210, 120]);
+    note(g, (28 - cx) / fov, top, 'DRAIN', [220, 214, 240]);
   }
+  if (fov > 34) callout(g, (17 - cx) / fov, (SHEETS[2] - cy) / fov, 0.5, (SHEETS[2] - cy) / fov + 0.2, 'silicon nanosheet', [190, 210, 245]);
+  legend(g, [
+    [G.full, [240, 198, 96], 'gate: wraps all three sheets'],
+    [G.dark, [150, 176, 218], 'silicon sheet (the channel)'],
+    [G.full, [92, 216, 136], 'source / drain'],
+    [G.colon, [196, 126, 244], 'insulator'],
+    [G.o, [170, 252, 255], 'electrons'],
+  ]);
+  status(g, on ? 'GATE ON: electrons flow from source to drain' : 'GATE OFF: nothing gets through', on ? [150, 248, 255] : [176, 166, 204]);
 }
 
 /* ====================== 硅晶格（[110] 方向看过去的「哑铃」） ====================== */
@@ -477,6 +607,21 @@ export function drawLattice(g: Grid, zz: number) {
         const glyph = Math.abs(dx) < Math.abs(dy) * 0.4 ? G.pipe : dx * dy > 0 ? G.slash : G.back;
         put(g, i, glyph, 110, 124, 176);
       }
+    }
+  }
+  if (detail > 0.5) {
+    legend(g, [
+      [G.at, [220, 232, 255], 'silicon atom'],
+      [G.slash, [110, 124, 176], 'bond: two shared electrons'],
+    ], detail);
+    // 晶格常数：上下两个「同一位置」的原子之间正好 0.543 nm
+    const x = (-AX * 0.5 - cx) / fov;
+    const y0 = (A * 0.5 + DUMB - cy) / fov;
+    const y1 = (-A * 0.5 + DUMB - cy) / fov;
+    if (y0 < g.half - 0.05 && y1 > -g.half + 0.05) {
+      // 两条线从上下两个原子拉到同一处，像一个括号
+      callout(g, x, y0, x - 0.09, (y0 + y1) / 2, '0.543 nm', [255, 143, 189], detail);
+      callout(g, x, y1, x - 0.09, (y0 + y1) / 2, '0.543 nm', [255, 143, 189], detail);
     }
   }
 }
