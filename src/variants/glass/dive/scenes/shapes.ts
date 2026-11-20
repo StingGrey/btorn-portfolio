@@ -1,7 +1,7 @@
 // 宇宙那几段共用的小画法：往底色上加光、3×2 的小球、一圈小点、一小团星系、一张会被拉开的坐标纸。
 
 import { G } from '../charset';
-import { colOf, hash3, plot, put, rowOf, smooth, type Grid } from '../grid';
+import { clamp01, colOf, hash3, plot, put, rowOf, smooth, type Grid } from '../grid';
 import type { Rgb } from '../notes';
 
 /** 开头那颗粉色的 O 的颜色：「你在这」也用它 */
@@ -10,25 +10,96 @@ export const PINK: Rgb = [255, 95, 143];
 /** 先升后降：a 处开始、peak 处最强、c 处回到 0 */
 export const bump = (x: number, a: number, peak: number, c: number) => smooth(a, peak, x) * (1 - smooth(peak, c, x));
 
-/** 往底色上加一点光（不是盖掉） */
+/** 往底色上加一点光（不是盖掉）；这一格是上下两个像素（▀）的话，上半格也一起加，不然只亮下半格、看起来是一道道横线 */
 export function glow(g: Grid, i: number, r: number, gr: number, b: number) {
   const o = i * 4;
   g.bg[o] = Math.min(255, g.bg[o] + r);
   g.bg[o + 1] = Math.min(255, g.bg[o + 1] + gr);
   g.bg[o + 2] = Math.min(255, g.bg[o + 2] + b);
+  if (g.fg[o + 3] === G.top) {
+    g.fg[o] = Math.min(255, g.fg[o] + r);
+    g.fg[o + 1] = Math.min(255, g.fg[o + 1] + gr);
+    g.fg[o + 2] = Math.min(255, g.fg[o + 2] + b);
+  }
 }
 
-/** 一个小球：3 列 × 2 行（▄█▄ / ▀█▀），格子太细，单个字只是一个小点 */
+/** 一个小球（格子太细，单个字只是一个小点）：见 orb */
 export function ball(g: Grid, x: number, y: number, r: number, gr: number, b: number) {
-  const c = colOf(g, x);
-  const top = rowOf(g, y + g.ch * 0.5);
-  for (let dy = 0; dy < 2; dy += 1) {
-    const row = top + dy;
-    if (row < 0 || row >= g.rows) continue;
-    for (let dx = -1; dx <= 1; dx += 1) {
-      const col = c + dx;
-      if (col < 0 || col >= g.cols) continue;
-      put(g, row * g.cols + col, dx === 0 ? G.full : dy === 0 ? G.bottom : G.top, r, gr, b);
+  orb(g, x, y, r, gr, b);
+}
+
+/** 球面打光：光从左上前方来 */
+const LX = -0.45;
+const LY = -0.55;
+const LZ = Math.sqrt(1 - LX * LX - LY * LY);
+
+/**
+ * 一个像素小球。用 ▀ 把一格切成上下两个方像素（字色画上半、底色画下半），竖着的分辨率翻一倍；
+ * 球心可以落在像素之间（动起来是滑的，不是一格一格跳），边缘按覆盖多少和原来的底色混（不长锯齿），
+ * 左上亮、右下暗、带一个小高光，外面再往底色上晕一圈光。radius 以方像素（半格高）为单位。
+ */
+export function orb(g: Grid, x: number, y: number, r: number, gr: number, b: number, radius = 1.75, halo = 0.45) {
+  const pc = (x + g.aspect / 2) / g.cw;
+  const ph = (g.half - y) / (g.ch / 2);
+  const reach = radius + (halo > 0 ? 3.5 : 0.6);
+  const c0 = Math.max(0, Math.floor(pc - reach));
+  const c1 = Math.min(g.cols - 1, Math.floor(pc + reach));
+  const r0 = Math.max(0, Math.floor((ph - reach) / 2));
+  const r1 = Math.min(g.rows - 1, Math.floor((ph + reach) / 2));
+  for (let row = r0; row <= r1; row += 1) {
+    for (let col = c0; col <= c1; col += 1) {
+      const i = row * g.cols + col;
+      const o = i * 4;
+      const br = g.bg[o];
+      const bgg = g.bg[o + 1];
+      const bb = g.bg[o + 2];
+      const dx = col + 0.5 - pc;
+      // 上半格、下半格两个像素
+      let hit = false;
+      let tr = br;
+      let tg = bgg;
+      let tb = bb;
+      let ur = br;
+      let ug = bgg;
+      let ub = bb;
+      for (let half = 0; half < 2; half += 1) {
+        const dy = row * 2 + half + 0.5 - ph;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        const cover = clamp01(radius - d + 0.5);
+        if (cover <= 0) continue;
+        hit = true;
+        const nx = clamp01(d / radius) * (d > 0 ? dx / d : 0);
+        const ny = clamp01(d / radius) * (d > 0 ? dy / d : 0);
+        const nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+        const lambert = Math.max(0, nx * LX + ny * LY + nz * LZ);
+        const shade = 0.42 + 0.68 * lambert;
+        const spec = lambert ** 18 * 0.55;
+        const pr = br + (Math.min(255, r * shade + 255 * spec) - br) * cover;
+        const pg = bgg + (Math.min(255, gr * shade + 255 * spec) - bgg) * cover;
+        const pb = bb + (Math.min(255, b * shade + 255 * spec) - bb) * cover;
+        if (half === 0) {
+          tr = pr;
+          tg = pg;
+          tb = pb;
+        } else {
+          ur = pr;
+          ug = pg;
+          ub = pb;
+        }
+      }
+      if (hit) {
+        put(g, i, G.top, tr, tg, tb);
+        g.bg[o] = Math.min(255, ur);
+        g.bg[o + 1] = Math.min(255, ug);
+        g.bg[o + 2] = Math.min(255, ub);
+        continue;
+      }
+      if (halo <= 0) continue;
+      // 球外面：往底色上晕一圈光（越远越淡）
+      const dy = row * 2 + 1 - ph;
+      const d = Math.sqrt(dx * dx + dy * dy) - radius;
+      const k = halo * Math.exp(-d * 0.9) * 0.35;
+      if (k > 0.01) glow(g, i, r * k, gr * k, b * k);
     }
   }
 }

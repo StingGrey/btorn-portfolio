@@ -6,7 +6,7 @@
 // 再被引力收成一道道墙；最后镜头拉远回泡沫原来的大小，宇宙网就是当初那片泡沫。
 // 大爆炸画成「没有中心的膨胀」：没有火球、没有冲击波，每一点都在离开其它所有点，最后整屏在同一刻烧白。
 
-import { G, RAMP, lineGlyph } from '../charset';
+import { G, RAMP, gi, lineGlyph } from '../charset';
 import { BG, clamp01, clock, colOf, hash1, hash2, hash3, lerp, noise2, plot, put, rowOf, smooth, threshold, tint, walk, type Grid } from '../grid';
 import { callout, legend, note, status, type Rgb } from '../notes';
 import { formatScale, interpolate, timeAt } from '../timeline';
@@ -249,6 +249,14 @@ const SIZE_KEYS: [number, number][] = [
   [1098, -1],
 ];
 
+/** 起伏从疏到密的字（不用 - 和 =：横笔画连起来像扫描线） */
+const RIPPLE_RAMP = [...' .·:;+*#'].map(gi);
+let rowBlob = new Float32Array(0);
+let rowWall = new Float32Array(0);
+let rowM = new Float32Array(0);
+let rowDx = new Float32Array(0);
+let rowDy = new Float32Array(0);
+
 export function drawInflation(g: Grid, zz: number) {
   const t = phase;
   const z = Z_END * smooth(STRETCH[0], STRETCH[1], zz);
@@ -262,43 +270,66 @@ export function drawInflation(g: Grid, zz: number) {
   // 拉完了、泡壁也全抹平了：花纹就是暴胀停下来时那张，不用每帧重算
   const done = z >= Z_END && soften >= 1 ? frozen(g) : null;
   if (!done) prepare(z, soften);
+  const half = Math.ceil(g.cols / 2) + 1;
+  if (rowBlob.length < half) {
+    rowBlob = new Float32Array(half);
+    rowWall = new Float32Array(half);
+    rowM = new Float32Array(half);
+    rowDx = new Float32Array(half);
+    rowDy = new Float32Array(half);
+  }
   for (let y = 0; y < g.rows; y += 1) {
-    for (let x = 0; x < g.cols; x += 2) {
+    // 每两列算一个样本（三次噪声叠好几层，太贵），中间那列两边插出来，起伏才是滑的
+    for (let k = 0; k < half; k += 1) {
+      const x = Math.min(g.cols - 1, k * 2);
       if (done) {
-        sBlob = done.blob[y * done.cols + (x >> 1)];
-        sWall = 0;
-        sM = 0.4;
-      } else sample(g.ox[x] * BASE, g.oy[y] * BASE, t);
-      const blob = sBlob;
-      const wall = sWall;
-      const v = Math.min(1, wall * 1.25 + sM * 0.1 * (1 - soften));
-      // 起伏：鼓起来的地方是一团团方块（后面就成了微波背景上的斑），瘪下去的地方空着
+        rowBlob[k] = done.blob[y * done.cols + Math.min(done.cols - 1, k)];
+        rowWall[k] = 0;
+        rowM[k] = 0.4;
+      } else {
+        sample(g.ox[x] * BASE, g.oy[y] * BASE, t);
+        rowBlob[k] = sBlob;
+        rowWall[k] = sWall;
+        rowM[k] = sM;
+        rowDx[k] = sDx;
+        rowDy[k] = sDy;
+      }
+    }
+    for (let c = 0; c < g.cols; c += 1) {
+      const k = c >> 1;
+      const odd = c & 1;
+      const blob = odd ? (rowBlob[k] + rowBlob[k + 1]) * 0.5 : rowBlob[k];
+      const wall = odd ? (rowWall[k] + rowWall[k + 1]) * 0.5 : rowWall[k];
+      const m = rowM[k];
+      const v = Math.min(1, wall * 1.25 + m * 0.1 * (1 - soften));
+      // 起伏：鼓起来的地方亮（后面就成了微波背景上的斑），瘪下去的地方暗
       const shade = ((clamp01(0.5 + blob * 1.6) - 0.3) / 0.7) * ripple;
-      const sk = (0.75 + 0.25 * shade) * (1 - 0.15 * cool);
+      const i = y * g.cols + c;
+      if (heat > 0 && threshold(c, y) < heat * 1.15) {
+        // 整屏同时烧白：不是从哪一点开始的，每一格都在同一刻亮起来；刚才的起伏还留着一点点
+        const kk = heat * (0.92 + 0.2 * blob) * 0.92;
+        tint(g, i, BG[0] + (HOT[0] - BG[0]) * kk, BG[1] + (HOT[1] - BG[1]) * kk, BG[2] + (HOT[2] - BG[2]) * kk);
+        // 白光里零零星星翻着更亮的火星（只占三成格子，不然满屏的字反而显得发灰）
+        const h = hash2(i, frame);
+        if (h < 0.3) put(g, i, h < 0.08 ? G.star : h < 0.18 ? G.plus : G.dot, 255, 255, 250);
+        continue;
+      }
+      if (v >= 0.1 && (shade < 0.05 || v > 0.4)) {
+        foamCell(g, i, v, m, wall, rowDx[k], rowDy[k], dim);
+        continue;
+      }
+      if (shade < 0.02) continue;
+      // 颜色、底色都跟着起伏连续地变；字从疏到密挑，抖一点点，免得亮度台阶连成一圈圈的线
+      const lift = clamp01(shade);
+      const sk = (0.55 + 0.5 * lift) * (1 - 0.15 * cool);
       const sr = lerp(210, 105, cool) * sk;
       const sg = lerp(150, 125, cool) * sk;
       const sb = 255 * sk;
-      for (let c = x; c < Math.min(x + 2, g.cols); c += 1) {
-        const i = y * g.cols + c;
-        if (heat > 0 && threshold(c, y) < heat * 1.15) {
-          // 整屏同时烧白：不是从哪一点开始的，每一格都在同一刻亮起来；刚才的起伏还留着一点点
-          const k = heat * (0.92 + 0.2 * blob) * 0.92;
-          tint(g, i, BG[0] + (HOT[0] - BG[0]) * k, BG[1] + (HOT[1] - BG[1]) * k, BG[2] + (HOT[2] - BG[2]) * k);
-          // 白光里零零星星翻着更亮的火星（只占三成格子，不然满屏的字反而显得发灰）
-          const h = hash2(i, frame);
-          if (h < 0.3) put(g, i, h < 0.08 ? G.star : h < 0.18 ? G.plus : G.dot, 255, 255, 250);
-          continue;
-        }
-        if (v >= 0.1 && (shade < 0.05 || v > 0.4)) {
-          foamCell(g, i, v, sM, wall, sDx, sDy, dim);
-          continue;
-        }
-        if (shade < 0.05) continue;
-        // 方块字在这么细的格子里很稀，亮度主要靠底色撑
-        const under = 0.1 + 0.28 * shade;
-        put(g, i, shade < 0.25 ? G.light : shade < 0.55 ? G.medium : G.dark, sr, sg, sb);
-        tint(g, i, BG[0] + sr * under, BG[1] + sg * under, BG[2] + sb * under);
-      }
+      const under = 0.05 + 0.24 * lift * lift;
+      tint(g, i, BG[0] + sr * under, BG[1] + sg * under, BG[2] + sb * under);
+      const pick = lift * 0.85 + (hash2(c * 3, y * 7) - 0.5) * 0.12;
+      if (pick < 0.06) continue;
+      put(g, i, RIPPLE_RAMP[Math.min(RIPPLE_RAMP.length - 1, 1 + Math.floor(pick * (RIPPLE_RAMP.length - 1)))], sr, sg, sb);
     }
   }
   drawSpread(g, z, smooth(STRETCH[0], STRETCH[0] + 8, zz) * (1 - smooth(1094, 1104, zz)));
@@ -392,15 +423,18 @@ function layout(g: Grid) {
       const mx = ((bx % 4) + 4) % 4;
       const my = ((by % 4) + 4) % 4;
       const helium = mx < 2 && my < 2;
+      // 氦核聚在哪：每 4×4 一个，但不排成整齐的方阵（整块挪一点）
+      const hb = bx - mx;
+      const hc = by - my;
       baryons.push({
-        x: (bx + (hash2(bx, by) - 0.5) * 0.55) * SPACING,
-        y: (by + (hash2(by + 31, bx) - 0.5) * 0.55) * SPACING,
+        x: (bx + (hash2(bx, by) - 0.5) * 0.8) * SPACING,
+        y: (by + (hash2(by + 31, bx) - 0.5) * 0.8) * SPACING,
         mx,
         my,
         helium,
         neutron: helium && mx === my,
-        hx: (bx - mx + 0.5) * SPACING,
-        hy: (by - my + 0.5) * SPACING,
+        hx: (hb + 0.5 + (hash2(hb * 3 + 11, hc * 5 - 7) - 0.5) * 1.6) * SPACING,
+        hy: (hc + 0.5 + (hash2(hc * 7 + 2, hb * 3 + 19) - 0.5) * 1.6) * SPACING,
         seed: hash2(bx * 7 + 3, by * 13 + 5),
       });
     }
@@ -787,35 +821,85 @@ export function drawSoup(g: Grid, zz: number) {
 /* ====================== 发光的雾 → 雾散开 → 微波背景 ====================== */
 
 const FOG: Rgb = [255, 128, 56];
-/** 微波背景的冷、不冷不热、暖（颜色是夸张过的：真实的差别只有十万分之一） */
-const COLD: Rgb = [60, 110, 255];
-const MILD: Rgb = [255, 236, 196];
-const WARM: Rgb = [255, 84, 52];
 /** 电子被原子核抓住，雾在同一刻到处散开 */
 const CLEAR: [number, number] = [1313, 1331];
 /** 留下来的那束光：冷热斑 */
 const GLOW: [number, number] = [1321, 1339];
+/** 微波背景的冷、暖（颜色是夸张过的：真实的差别只有十万分之一）：图例用 */
+const COLD: Rgb = [60, 120, 250];
+const WARM: Rgb = [245, 110, 50];
+
+/** 温度图的色带（-1 最冷 … 1 最暖）：深蓝 → 浅蓝 → 米白 → 橙黄 → 红，和常见的那张全天图一个意思 */
+const CMB_STOPS: [number, Rgb][] = [
+  [-1, [14, 30, 112]],
+  [-0.55, [34, 96, 220]],
+  [-0.22, [120, 182, 250]],
+  [0, [236, 232, 214]],
+  [0.22, [255, 206, 122]],
+  [0.55, [245, 112, 50]],
+  [1, [160, 28, 24]],
+];
+function cmbColor(b: number, out: Uint8Array, o: number) {
+  let k = 1;
+  while (k < CMB_STOPS.length - 1 && b > CMB_STOPS[k][0]) k += 1;
+  const [b0, c0] = CMB_STOPS[k - 1];
+  const [b1, c1] = CMB_STOPS[k];
+  const t = clamp01((b - b0) / (b1 - b0));
+  out[o] = c0[0] + (c1[0] - c0[0]) * t;
+  out[o + 1] = c0[1] + (c1[1] - c0[1]) * t;
+  out[o + 2] = c0[2] + (c1[2] - c0[2]) * t;
+}
 
 /**
- * 微波背景的一格：b 是 -1（冷）..1（暖），k 是亮度；red 让它往暗红褪（光被拉长成看不见的微波）。
- * 用方块字铺满，看起来像一张温度图。
+ * 微波背景的高清版：每格上下两个方像素（▀：字色画上半、底色画下半），竖着的分辨率翻倍；
+ * 冷热斑在暴胀留下的那几层起伏上，再叠两层更细的（真的那张图上大大小小的斑都有），颜色只算一次存起来。
  */
-function cmbCell(g: Grid, i: number, b: number, k: number, red = 0) {
-  if (k < 0.03) return;
-  const a = Math.min(1, Math.abs(b) * 1.3) ** 0.6;
-  const to = b < 0 ? COLD : WARM;
-  let r = lerp(MILD[0], to[0], a);
-  let gr = lerp(MILD[1], to[1], a);
-  let bl = lerp(MILD[2], to[2], a);
-  if (red > 0) {
-    r = lerp(r, 150, red);
-    gr = lerp(gr, 24, red);
-    bl = lerp(bl, 30, red);
+const cmbHi = { key: '', rgb: new Uint8Array(0), next: 0 };
+function cmbPixels(g: Grid, f: Field, budget = Infinity) {
+  const key = `${f.key}`;
+  if (cmbHi.key !== key) {
+    cmbHi.key = key;
+    cmbHi.next = 0;
+    if (cmbHi.rgb.length !== g.count * 6) cmbHi.rgb = new Uint8Array(g.count * 6);
   }
-  put(g, i, a < 0.33 ? G.light : a < 0.66 ? G.medium : G.dark, r * k, gr * k, bl * k);
-  // 方块字在这么细的格子里很稀，亮度主要靠底色撑
-  const under = 0.2 + 0.2 * a;
-  tint(g, i, BG[0] + r * k * under, BG[1] + gr * k * under, BG[2] + bl * k * under);
+  const start = performance.now();
+  const half = g.ch / 2;
+  for (; cmbHi.next < g.rows * 2; cmbHi.next += 1) {
+    if (performance.now() - start > budget) return false;
+    const p = cmbHi.next;
+    const y = g.half - (p + 0.5) * half;
+    const fy = Math.max(0, Math.min(g.rows - 1.001, p / 2 - 0.25));
+    const y0 = Math.floor(fy);
+    const v = fy - y0;
+    for (let c = 0; c < g.cols; c += 1) {
+      const x = g.ox[c];
+      const fx = Math.min(f.cols - 1.001, c / 2);
+      const x0 = Math.floor(fx);
+      const u = fx - x0;
+      const a = f.cmb[y0 * f.cols + x0];
+      const b = f.cmb[y0 * f.cols + x0 + 1];
+      const cc = f.cmb[(y0 + 1) * f.cols + x0];
+      const d = f.cmb[(y0 + 1) * f.cols + x0 + 1];
+      const base = a + (b - a) * u + (cc - a) * v + (a - b - cc + d) * u * v;
+      const fine = 0.12 * (noise2(x * 26 + 3.1, y * 26 - 7.7) - 0.5) + 0.07 * (noise2(x * 63 - 11, y * 63 + 5) - 0.5);
+      // 上半格存在前三个字节，下半格存在后三个（大斑压一点，色带两头别大片饱和）
+      cmbColor(spot((base * 0.72 + fine) * 1.05), cmbHi.rgb, ((p >> 1) * g.cols + c) * 6 + (p & 1) * 3);
+    }
+  }
+  return true;
+}
+
+/** 微波背景的一格（两个像素），k 是亮度；red 让它往暗红褪（光被拉长成看不见的微波） */
+function cmbCell(g: Grid, i: number, k: number, red = 0) {
+  if (k < 0.03) return;
+  const o = i * 6;
+  const rgb = cmbHi.rgb;
+  const keep = 1 - red;
+  const tr = (rgb[o] * keep + 120 * red) * k;
+  const tg = (rgb[o + 1] * keep + 20 * red) * k;
+  const tb = (rgb[o + 2] * keep + 26 * red) * k;
+  put(g, i, G.top, tr, tg, tb);
+  tint(g, i, (rgb[o + 3] * keep + 120 * red) * k, (rgb[o + 4] * keep + 20 * red) * k, (rgb[o + 5] * keep + 26 * red) * k);
 }
 
 const PHOTONS = 64;
@@ -853,7 +937,7 @@ function drawPhoton(g: Grid, k: number, t: number, show: number) {
 
 /** 雾一散，光终于能直直地飞出去了（按滚动算，往回滑会倒回去） */
 function drawFreeLight(g: Grid, zz: number, clear: number) {
-  const fade = 1 - smooth(1335, 1347, zz);
+  const fade = 1 - smooth(1331, 1341, zz);
   if (clear <= 0 || fade < 0.03) return;
   for (let k = 0; k < 90; k += 1) {
     const from = CLEAR[0] + hash1(k * 3 + 1) * 14;
@@ -868,8 +952,9 @@ function drawFreeLight(g: Grid, zz: number, clear: number) {
     const glyph = lineGlyph(Math.cos(a) / g.cw, Math.sin(a) / g.ch);
     walk(g, x1 - Math.cos(a) * len * 1.1, y1 - Math.sin(a) * len, x1, y1, (i, s) => {
       if (threshold(i % g.cols, (i / g.cols) | 0) >= clear) return;
-      const v = fade * (0.3 + 0.7 * s);
-      put(g, i, glyph, 255 * v, 236 * v, 160 * v);
+      // 叠在亮的温度图上也要看得出是光：颜色不跟着变暗，只是越往后越稀
+      if (hash2(i, k) > fade * (0.35 + 0.65 * s)) return;
+      put(g, i, glyph, 255, 244, 200);
     });
   }
 }
@@ -880,11 +965,17 @@ export function drawFog(g: Grid, zz: number) {
   const t = matterClock(g, 0.45);
   const clear = smooth(CLEAR[0], CLEAR[1], zz);
   const shine = smooth(GLOW[0], GLOW[1], zz);
+  // 微波背景那张高清图：雾还没散的时候每帧顺手算几行，要用的那一刻还没算完就当场算完
+  cmbPixels(g, f, shine > 0 ? Infinity : 1.5);
+  // 和黑暗时代那一段同一个节奏褪成暗红：两段交界溶解的时候才对得上
+  const fade = smooth(1373, 1399, zz);
+  const glowK = 0.9 * (1 - fade);
+  const redden = smooth(0, 0.7, fade);
   for (let y = 0; y < g.rows; y += 1) {
     for (let x = 0; x < g.cols; x += 2) {
       const b = spot(f.cmb[y * f.cols + (x >> 1)]);
-      // 雾自己在慢慢翻涌
-      const n = noise2(g.ox[x] * 7 + t * 0.12, g.oy[y] * 7 - t * 0.09);
+      // 雾自己在慢慢翻涌：一大一小两层
+      const n = 0.68 * noise2(g.ox[x] * 7 + t * 0.12, g.oy[y] * 7 - t * 0.09) + 0.32 * noise2(g.ox[x] * 21 - t * 0.21, g.oy[y] * 21 + t * 0.16);
       for (let c = x; c < Math.min(x + 2, g.cols); c += 1) {
         const i = y * g.cols + c;
         const cell = threshold(c, y);
@@ -893,7 +984,7 @@ export function drawFog(g: Grid, zz: number) {
           tint(g, i, BG[0] + (FOG[0] - BG[0]) * k, BG[1] + (FOG[1] - BG[1]) * k, BG[2] + (FOG[2] - BG[2]) * k);
           const v = 0.42 + 0.3 * n + 0.06 * b;
           put(g, i, G.medium, FOG[0] * v, FOG[1] * v, FOG[2] * v);
-        } else if (cell < shine) cmbCell(g, i, b, 0.9);
+        } else if (cell < shine) cmbCell(g, i, glowK, redden);
       }
     }
   }
@@ -1032,19 +1123,29 @@ function drawStars(g: Grid, zz: number, k: number, show: number, bubble: number)
 
 /**
  * 再电离：第一批恒星的光在剩下的中性气体（黑暗时代那层淡淡的雾）里烧出一个个泡泡，泡泡越长越大、连成一片。
- * 在一张粗格子上算（一个粗格是 8×4 格），画的时候双线性插出来；每个星的泡泡半径跟着它亮了多久长。
+ * 在一张粗一点的格子上（一个粗格 4×2 格）存「离最近的泡泡边还有多远」（在泡泡里是正的），画的时候双线性插出来再取阈值：
+ * 插的是距离不是亮不亮，泡泡边才是圆滑的，不会一格格长台阶。电离前沿也不是正圆，加了一点噪声。
  */
+const ION_X = 4;
+const ION_Y = 2;
 let ion = new Float32Array(0);
 let ionW = 0;
 let ionH = 0;
+let ionAll = 0;
+/** 分桶：一个桶多宽（屏幕单位）；每个桶里是哪几颗星（bucketStart 是前缀和） */
+const BUCKET = 0.1;
+let bucketStart = new Int32Array(0);
+let bucketList = new Int32Array(0);
+let bucketFill = new Int32Array(0);
 const litX = new Float32Array(256);
 const litY = new Float32Array(256);
 const litR = new Float32Array(256);
 function ionize(g: Grid, zz: number) {
-  ionW = Math.ceil(g.cols / 8) + 1;
-  ionH = Math.ceil(g.rows / 4) + 1;
+  ionW = Math.ceil(g.cols / ION_X) + 1;
+  ionH = Math.ceil(g.rows / ION_Y) + 1;
   if (ion.length !== ionW * ionH) ion = new Float32Array(ionW * ionH);
-  const all = smooth(1500, 1514, zz);
+  ionAll = smooth(1500, 1514, zz);
+  if (ionAll >= 1) return;
   // 这一帧已经亮了的星和它们的泡泡多大，先挑出来
   let lit = 0;
   for (const s of sites) {
@@ -1054,26 +1155,65 @@ function ionize(g: Grid, zz: number) {
     litR[lit] = 0.008 + 0.3 * smooth(s.on, s.on + 36, zz);
     lit += 1;
   }
+  // 星按位置分进一个个桶（一个桶 BUCKET 宽），每个格点只看自己那个桶里的星
+  const bw = Math.ceil(g.aspect / BUCKET) + 1;
+  const bh = Math.ceil((g.half * 2) / BUCKET) + 1;
+  if (bucketStart.length < bw * bh + 1) bucketStart = new Int32Array(bw * bh + 1);
+  bucketStart.fill(0);
+  const reachOf = (k: number) => litR[k] + 0.06;
+  const span = (k: number, out: number[]) => {
+    const r = reachOf(k);
+    out[0] = Math.max(0, Math.floor((litX[k] - r * 1.1 + g.aspect / 2) / BUCKET));
+    out[1] = Math.min(bw - 1, Math.floor((litX[k] + r * 1.1 + g.aspect / 2) / BUCKET));
+    out[2] = Math.max(0, Math.floor((g.half - litY[k] - r) / BUCKET));
+    out[3] = Math.min(bh - 1, Math.floor((g.half - litY[k] + r) / BUCKET));
+  };
+  const box = [0, 0, 0, 0];
+  for (let k = 0; k < lit; k += 1) {
+    span(k, box);
+    for (let by = box[2]; by <= box[3]; by += 1) for (let bx = box[0]; bx <= box[1]; bx += 1) bucketStart[by * bw + bx + 1] += 1;
+  }
+  for (let b = 0; b < bw * bh; b += 1) bucketStart[b + 1] += bucketStart[b];
+  if (bucketList.length < bucketStart[bw * bh]) bucketList = new Int32Array(bucketStart[bw * bh] * 2);
+  const fill = bucketFill.length < bw * bh ? (bucketFill = new Int32Array(bw * bh)) : bucketFill;
+  fill.fill(0, 0, bw * bh);
+  for (let k = 0; k < lit; k += 1) {
+    span(k, box);
+    for (let by = box[2]; by <= box[3]; by += 1) {
+      for (let bx = box[0]; bx <= box[1]; bx += 1) {
+        const b = by * bw + bx;
+        bucketList[bucketStart[b] + fill[b]] = k;
+        fill[b] += 1;
+      }
+    }
+  }
   for (let ly = 0; ly < ionH; ly += 1) {
-    const y = g.half - ly * 4 * g.ch;
+    const y = g.half - ly * ION_Y * g.ch;
+    const by = Math.max(0, Math.min(bh - 1, Math.floor((g.half - y) / BUCKET)));
     for (let lx = 0; lx < ionW; lx += 1) {
-      const x = lx * 8 * g.cw - g.aspect / 2;
-      let v = all;
-      for (let k = 0; k < lit && v < 1; k += 1) {
+      const x = lx * ION_X * g.cw - g.aspect / 2;
+      const bx = Math.max(0, Math.min(bw - 1, Math.floor((x + g.aspect / 2) / BUCKET)));
+      const b = by * bw + bx;
+      let best = -0.04;
+      for (let n = bucketStart[b]; n < bucketStart[b + 1] && best < 0.03; n += 1) {
+        const k = bucketList[n];
         const dx = (x - litX[k]) / 1.1;
         const dy = y - litY[k];
         const r = litR[k];
-        if (dx > r || dx < -r || dy > r || dy < -r) continue;
-        const d = Math.sqrt(dx * dx + dy * dy);
-        if (d < r) v = Math.max(v, clamp01((r - d) / 0.018));
+        const reach = r - best;
+        if (dx > reach || dx < -reach || dy > reach || dy < -reach) continue;
+        const d = r - Math.sqrt(dx * dx + dy * dy);
+        if (d > best) best = d;
       }
-      ion[ly * ionW + lx] = v;
+      ion[ly * ionW + lx] = best + 0.034 * (noise2(x * 10 + 3, y * 10 - 5) - 0.5) + 0.014 * (noise2(x * 31, y * 31 + 9) - 0.5);
     }
   }
 }
+/** 第 (x, y) 格（格子坐标）被照亮了多少：0 还是中性的雾，1 已经烧透 */
 function ionAt(x: number, y: number) {
-  const fx = x / 8;
-  const fy = y / 4;
+  if (ionAll >= 1) return 1;
+  const fx = x / ION_X;
+  const fy = y / ION_Y;
   const x0 = Math.min(ionW - 2, fx | 0);
   const y0 = Math.min(ionH - 2, fy | 0);
   const u = fx - x0;
@@ -1082,12 +1222,14 @@ function ionAt(x: number, y: number) {
   const b = ion[y0 * ionW + x0 + 1];
   const c = ion[(y0 + 1) * ionW + x0];
   const d = ion[(y0 + 1) * ionW + x0 + 1];
-  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  const sd = a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  return Math.max(ionAll, clamp01(sd / 0.014));
 }
 
 export function drawDark(g: Grid, zz: number) {
   const f = frozen(g);
   starSites(g, f);
+  if (zz < 1400) cmbPixels(g, f);
   // 那束光被宇宙越拉越长：从看得见的光褪成暗红，最后成了看不见的微波
   const fade = smooth(1373, 1399, zz);
   // 黑暗时代的中性气体：淡淡的一层雾，后面被星光一个个泡泡烧掉
@@ -1103,9 +1245,10 @@ export function drawDark(g: Grid, zz: number) {
   for (let y = 0; y < g.rows; y += 1) {
     for (let x = 0; x < g.cols; x += 1) {
       const sx = x >> 1;
-      const b = f.blob[y * cols + sx];
+      // 每两列一个样本：中间那列在两边之间插，墙的边才是滑的
+      const b = x & 1 && sx + 1 < cols ? (f.blob[y * cols + sx] + f.blob[y * cols + sx + 1]) * 0.5 : f.blob[y * cols + sx];
       const i = y * g.cols + x;
-      if (fade < 1) cmbCell(g, i, spot(f.cmb[y * cols + sx]), 0.9 * (1 - fade), smooth(0, 0.7, fade));
+      if (fade < 1) cmbCell(g, i, 0.9 * (1 - fade), smooth(0, 0.7, fade));
       const lit = reion ? ionAt(x, y) : 0;
       if (haze > 0.02) {
         const fog = haze * (1 - lit);
@@ -1216,39 +1359,38 @@ export function drawWebAt(g: Grid, z: number, cx: number, cy: number, web: numbe
   lastCols = cols;
   const lineK = lines * 0.55;
   for (let y = 0; y < g.rows; y += 1) {
-    for (let sx = 0; sx < cols; sx += 1) {
+    for (let x = 0; x < g.cols; x += 1) {
+      const sx = x >> 1;
       const o = y * cols + sx;
-      const v = wallOf(blob[o]);
-      const p = (0.004 + 0.5 * v * v * Math.sqrt(v)) * web;
+      // 每两列一个样本：中间那列在两边之间插（插的是起伏，再取墙），墙的边才是滑的
+      const b = x & 1 && sx + 1 < cols ? (blob[o] + blob[o + 1]) * 0.5 : blob[o];
+      const v = wallOf(b);
+      const p = (0.004 + 0.55 * v * v * Math.sqrt(v)) * web;
       const bright = 0.55 + 0.45 * v;
       const ghost = !still && lines > 0.02 && webWall[o] > 0.45 ? lineK * webWall[o] : 0;
       const left = gas > 0.02 && v > 0.08 ? v * gas : 0;
-      let tx = 1;
-      let ty = 0;
+      const i = y * g.cols + x;
+      // 沿着墙的光：一层宽而淡的晕，墙心再亮一道细的
+      const core = v * v * v;
+      glow(g, i, (14 * v + 22 * core) * web, (9 * v + 14 * core) * web, (30 * v + 46 * core) * web);
+      // 星系：一格一个点，墙上密，空洞里几乎没有；墙心最亮的地方是星系团，偶尔一颗特别亮的
+      const h = hash2(x * 3 + 1, y * 7 + 3);
+      if (h < p) {
+        const tone = TONES[(hash2(x * 5, y * 11) * 3) | 0];
+        const k = bright * (0.75 + 0.35 * hash2(x * 13, y * 5));
+        put(g, i, v > 0.85 && h < p * 0.2 ? G.star : h < p * 0.55 ? G.mid : G.dot, tone[0] * k, tone[1] * k, tone[2] * k);
+        continue;
+      }
+      if (ghost > 0) {
+        put(g, i, lineGlyph(-(webDy[o] - 0.5), webDx[o] - 0.5), 120 * ghost, 96 * ghost, 190 * ghost);
+        continue;
+      }
+      // 黑暗时代那些气体，慢慢让位给星系
       if (left > 0.08) {
         // 墙的走向：沿着花纹的梯度转 90°
         const gx = (blob[y * cols + Math.min(cols - 1, sx + 1)] - blob[y * cols + Math.max(0, sx - 1)]) / (4 * g.cw);
         const gy = (blob[Math.max(0, y - 1) * cols + sx] - blob[Math.min(g.rows - 1, y + 1) * cols + sx]) / (2 * g.ch);
-        tx = -gy / g.cw;
-        ty = gx / g.ch;
-      }
-      for (let x = sx * 2; x < Math.min(sx * 2 + 2, g.cols); x += 1) {
-        const i = y * g.cols + x;
-        // 沿着墙的一点点光
-        glow(g, i, 20 * v * web, 14 * v * web, 42 * v * web);
-        // 星系：一格一个点，墙上密，空洞里几乎没有
-        const h = hash2(x * 3 + 1, y * 7 + 3);
-        if (h < p) {
-          const tone = TONES[(hash2(x * 5, y * 11) * 3) | 0];
-          put(g, i, v > 0.85 && h < p * 0.2 ? G.star : h < p * 0.55 ? G.mid : G.dot, tone[0] * bright, tone[1] * bright, tone[2] * bright);
-          continue;
-        }
-        if (ghost > 0) {
-          put(g, i, lineGlyph(-(webDy[o] - 0.5), webDx[o] - 0.5), 120 * ghost, 96 * ghost, 190 * ghost);
-          continue;
-        }
-        // 黑暗时代那些气体，慢慢让位给星系
-        if (left > 0.08) gasCell(g, i, left, tx, ty);
+        gasCell(g, i, left, -gy / g.cw, gx / g.ch);
       }
     }
   }
